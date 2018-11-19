@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/16/2018
+# Last Modified: 11/19/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -35,18 +35,29 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ###############################################################################
 
+'''
+Pulls and converts containers to Lmod modulefiles
+
+.. module:: gantry-crane
+   :platform: Linux, MacOS
+   :synopsis: Pulls and converts containers to Lmod modulefiles
+
+.. moduleauthor:: Greg Zynda <gzynda@tacc.utexas.edu>
+'''
+
 import subprocess as sp
 import sys, argparse, os, json, logging
 from collections import Counter
+from threading import Thread
 try: import urllib2
 except: import urllib.request as urllib2
-from threading import Thread
 
 def ee(code, msg):
 	sys.stderr.write(msg+'\n')
 	sys.exit(code)
 # Environment
 FORMAT = "[%(levelname)s - %(filename)s:%(lineno)s - %(funcName)15s] %(message)s"
+param_url = "Parameters\n\t\t----------\n\t\turl : str\n\t\t\tImage url used to pull"
 
 def main():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''\
@@ -119,8 +130,13 @@ Usage
 	# Generate module files
 	################################
 	logger.debug("Creating Lmod files")
-	for url in urls: cSystem.genLMOD(url)
+	for url in urls: cSystem.genLMOD(url, args.prefix)
 	logger.info("Finished creating Lmod files for all %i containers"%(len(args.urls)))
+	################################
+	# Delete default images
+	################################
+	for url in defaultURLS: cSystem.delete(url)
+	
 
 class ContainerSystem:
 	def __init__(self, cDir, mDir, forceImage):
@@ -146,6 +162,16 @@ class ContainerSystem:
 		self.blacklist = set([])
 		self.prog_count = Counter()
 	def detectSystem(self):
+		'''
+		Detects the container system type {docker, singularity}
+
+		Exits with code 101 if neither is found.
+
+		Returns
+		-------
+		str
+			conainter system
+		'''
 		if not sp.call('docker info &>/dev/null', shell=True):
 			logger.debug("Detected docker for container management")
 			return 'docker'
@@ -156,16 +182,41 @@ class ContainerSystem:
 			logger.error("Neither docker nor singularity detected on system")
 			sys.exit(101)
 	def getRegistry(self, url):
+		'''
+		Sets self.registry[url] with the registry that tracks the URL
+
+		%s
+		'''%(param_url)
 		self.registry[url] = 'dockerhub'
 		if 'quay' in url:
 			self.registry[url] = 'quay'
 	def validateURL(self, url):
+		'''
+		Sets self.invalid[url] to true and returns False when a URL is invalid
+		
+		%s
+		
+		Returns
+		-------
+		bool
+			url is valid
+		'''%(param_url)
 		if tag not in self.getTags(url):
 			self.invalid[url] = True
 			return False
 		self.invalid[url] = False
 		return True
 	def getTags(self, url):
+		'''
+		Returns all tags for the image specified with URL
+		
+		%s
+		
+		Returns
+		-------
+		set
+			all tags associated with main image URL
+		'''%(param_url)
 		name = url.split(':')[0]
 		if url not in self.registry: self.getRegistry(url)
 		if self.registry[url] == 'quay':
@@ -178,6 +229,16 @@ class ContainerSystem:
 		except urllib2.HTTPError: return set([])
 		return set([t['name'] for t in resp[key]])
 	def pull(self, url):
+		'''
+		Pulls:
+		 - image
+		 - metadata
+		 - repository info
+
+		concurrently with threads
+
+		%s
+		'''%(param_url)
 		threads = []
 		self.getNameTag(url)
 		for func in (self.pullImage, self.getMetadata, self.getFullURL):
@@ -185,6 +246,15 @@ class ContainerSystem:
 			threads[-1].start()
 		for t in threads: t.join()
 	def getFullURL(self, url):
+		'''
+		Stores the web URL for viewing the specified image in
+
+			self.full_url[url]
+
+		and asserts that the URL should return a 200 code
+		
+		%s
+		'''%(param_url)
 		name = url.split(':')[0]
 		if "quay" in url:
 			name = '/'.join(name.split('/')[1:])
@@ -192,10 +262,16 @@ class ContainerSystem:
 		else:
 			base = 'https://hub.docker.com/r/%s'
 		self.full_url[url] = base%(name)
+		ret = urllib.urlopen(self.full_url[url]).getcode()
+		assert(ret == 200)
 	def getNameTag(self, url):
 		'''
-		Returns the container (name, tag) from a url
-		'''
+		Stores the container (name, tag) from a url in
+
+			self.name_tag[url]
+
+		%s
+		'''%(param_url)
 		tool_tag = 'latest'
 		if ':' in url:
 			tool_name, tool_tag = url.split(':')
@@ -204,6 +280,17 @@ class ContainerSystem:
 			tool_name = url.split('/')[-1]
 		self.name_tag[url] = (tool_name, tool_tag)
 	def pullImage(self, url):
+		'''
+		Pulls an image using either docker or singularity and
+		sets
+
+			self.images[url]
+
+		as the URL or path for subsequent interactions.
+
+		%s
+		'''%(param_url)
+		# handle force singularity
 		if self.system == 'docker':
 			sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
 			self.images[url] = url
@@ -217,6 +304,12 @@ class ContainerSystem:
 			ee(102, "Unhandled system")
 		print("Pulled %s"%(url))
 	def delImage(self, url):
+		'''
+		Deletes a cached image
+
+		%s
+		'''%(param_url)
+		# handle force singularity
 		if self.system == 'docker':
 			sp.check_call('docker rmi %s 1>/dev/null'%(url), shell=True)
 		elif self.system == 'singularity':
@@ -224,6 +317,17 @@ class ContainerSystem:
 		del self.images[url]
 		print("Pulled %s"%(url))
 	def getMetadata(self, url):
+		'''
+		Assuming the image is a biocontainer,
+
+			self.categories[url]
+			self.keywords[url]
+			self.description[url]
+
+		are set after querying https://dev.bio.tools
+
+		%s
+		'''%(param_url)
 		name = self.name_tag[url][0]
 		md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
 		self.homepage[url] = False
@@ -243,6 +347,9 @@ class ContainerSystem:
 		self.keywords[url] = topics
 		self.description[url] = desc
 	def scanAll(self):
+		'''
+		Runs self.cachProgs on all containers concurrently with threads
+		'''
 		print("#"*50+"\nScanning programs in containers\n"+"#"*50)
 		threads = []
 		for url in self.images:
@@ -252,8 +359,16 @@ class ContainerSystem:
 		for t in threads: t.join()
 	def cacheProgs(self, url):
 		'''
-		Crawls all directories on a container's PATH and caches a list of all executable files
-		'''
+		Crawls all directories on a container's PATH and caches a list of all executable files in
+
+			self.progs[url]
+		
+		and counts the global occurance of each program in
+
+			self.prog_count[prog]
+
+		%s
+		'''%(param_url)
 		if url not in self.images: self.pull(url)
 		if url not in self.progs:
 			findStr = 'export IFS=":"; find $PATH -maxdepth 1 \( -type l -o -type f \) -executable -exec basename {} \; | sort -u'
@@ -269,7 +384,16 @@ class ContainerSystem:
 	def getProgs(self, url, blacklist=True):
 		'''
 		Retruns a list of all programs on the path of a url that are not blacklisted
-		'''
+
+		%s
+		blacklist : bool
+			Filter out blacklisted programs
+
+		Returns
+		-------
+		list
+			programs on PATH in container
+		'''%(param_url)
 		if url not in self.progs:
 			self.cacheProgs(self, url)
 		if blacklist:
@@ -277,8 +401,12 @@ class ContainerSystem:
 		return list(self.progs[url])
 	def getAllProgs(self, url):
 		'''
-		Returns a list of all programs on the path of url
-		'''
+		Returns a list of all programs on the path of url.
+
+		This is a shortcut for self.getProgs(url, blaclist=False)
+
+		%s
+		'''%(param_url)
 		return self.getProgs(url, blacklist=False)
 	def diffProgs(self, fromURL, newURL):
 		'''
@@ -290,6 +418,13 @@ class ContainerSystem:
 	def findCommon(self, p=25):
 		'''
 		Creates a blacklist containing all programs that are in at least p% of the images
+
+			self.blacklist[url] = set([prog, prog, ...])
+
+		Parameters
+		----------
+		p : int
+			Percentile of images
 		'''
 		n_images = len(self.progs)
 		n_percentile = p*n_images/100.0
@@ -299,6 +434,11 @@ class ContainerSystem:
 		self.blacklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
 		print("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
 	def genLMOD(self, url):
+		'''
+		Generates an Lmod modulefile based on the cached container.
+
+		%s
+		'''%(param_url)
 		if url not in self.progs: self.cacheProgs(url)
 		#####
 		name, tag = self.name_tag[url]
