@@ -36,9 +36,9 @@
 ###############################################################################
 
 '''
-Pulls and converts containers to Lmod modulefiles
+Rolling Gantry Crane - Pulls and converts containers to Lmod modulefiles
 
-.. module:: gantry-crane
+.. module:: rgc
    :platform: Linux, MacOS
    :synopsis: Pulls and converts containers to Lmod modulefiles
 
@@ -47,21 +47,19 @@ Pulls and converts containers to Lmod modulefiles
 
 import subprocess as sp
 import sys, argparse, os, json, logging
+logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
 try: import urllib2
 except: import urllib.request as urllib2
 
-def ee(code, msg):
-	sys.stderr.write(msg+'\n')
-	sys.exit(code)
 # Environment
 FORMAT = "[%(levelname)s - %(filename)s:%(lineno)s - %(funcName)15s] %(message)s"
 param_url = "Parameters\n\t\t----------\n\t\turl : str\n\t\t\tImage url used to pull"
 
 def main():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''\
-gantry-crane
+rgc - Rolling Gantry Crane
 ======================================================
 
 Pulls containers from either:
@@ -135,11 +133,14 @@ Usage
 	################################
 	# Delete default images
 	################################
-	for url in defaultURLS: cSystem.delete(url)
+	for url in defaultURLS: cSystem.deleteImage(url)
 	
 
 class ContainerSystem:
 	def __init__(self, cDir, mDir, forceImage):
+		'''
+		Class for managing image cache
+		'''
 		self.system = self.detectSystem()
 		self.containerDir = cDir
 		self.moduleDir = mDir
@@ -149,7 +150,7 @@ class ContainerSystem:
 			os.makedirs(cDir)
 		logger.debug("Creating %s for modulefiles"%(mDir))
 		os.makedirs(mDir)
-		self.invalid = {}
+		self.invalid = set([])
 		self.images = {}
 		self.registry = {}
 		self.progs = {}
@@ -192,7 +193,7 @@ class ContainerSystem:
 			self.registry[url] = 'quay'
 	def validateURL(self, url):
 		'''
-		Sets self.invalid[url] to true and returns False when a URL is invalid
+		Addes url to the self.invalid set and returns False when a URL is invalid
 		
 		%s
 		
@@ -202,9 +203,8 @@ class ContainerSystem:
 			url is valid
 		'''%(param_url)
 		if tag not in self.getTags(url):
-			self.invalid[url] = True
+			self.invalid.add(url)
 			return False
-		self.invalid[url] = False
 		return True
 	def getTags(self, url):
 		'''
@@ -240,11 +240,14 @@ class ContainerSystem:
 		%s
 		'''%(param_url)
 		threads = []
-		self.getNameTag(url)
-		for func in (self.pullImage, self.getMetadata, self.getFullURL):
-			threads.append(Thread(target=func, args=(url,)))
-			threads[-1].start()
-		for t in threads: t.join()
+		if self.validate(url):
+			self.getNameTag(url)
+			for func in (self.pullImage, self.getMetadata, self.getFullURL):
+				threads.append(Thread(target=func, args=(url,)))
+				threads[-1].start()
+			for t in threads: t.join()
+		else:
+			logger.warning("Could not find %s. Excluding it future operations"%(url))
 	def getFullURL(self, url):
 		'''
 		Stores the web URL for viewing the specified image in
@@ -290,10 +293,16 @@ class ContainerSystem:
 
 		%s
 		'''%(param_url)
-		# handle force singularity
 		if self.system == 'docker':
-			sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
-			self.images[url] = url
+			if self.forceImage:
+				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s'"%(self.containerDir, url)
+				imgFile = sp.check_output(cmd, shell=True).split('\n')[-1].split(' ')[-1]
+				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
+				assert(os.path.exists(newName))
+				self.images[url] = newName
+			else:
+				sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
+				self.images[url] = url
 		elif self.system == 'singularity':
 			imgFile = sp.check_output('singularity pull docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-1].split(' ')[-1]
 			newName = os.path.join(self.containerDir, os.path.basename(imgFile))
@@ -301,21 +310,24 @@ class ContainerSystem:
 				os.rename(imgFile, newName)
 			self.images[url] = newName
 		else:
-			ee(102, "Unhandled system")
+			logger.error("Unhandled system")
+			sys.exit(102)
 		print("Pulled %s"%(url))
-	def delImage(self, url):
+	def deleteImage(self, url):
 		'''
 		Deletes a cached image
 
 		%s
 		'''%(param_url)
-		# handle force singularity
 		if self.system == 'docker':
-			sp.check_call('docker rmi %s 1>/dev/null'%(url), shell=True)
+			if self.forceImage:
+				os.remove(self.images[url])
+			else:
+				sp.check_call('docker rmi %s 1>/dev/null'%(url), shell=True)
 		elif self.system == 'singularity':
 			os.remove(self.images[url])
 		del self.images[url]
-		print("Pulled %s"%(url))
+		print("Deleted %s"%(url))
 	def getMetadata(self, url):
 		'''
 		Assuming the image is a biocontainer,
@@ -352,7 +364,7 @@ class ContainerSystem:
 		'''
 		print("#"*50+"\nScanning programs in containers\n"+"#"*50)
 		threads = []
-		for url in self.images:
+		for url in set(self.images.keys())-self.invalid:
 			self.cacheProgs(url)
 			threads.append(Thread(target=self.cacheProgs, args=(url,)))
 			threads[-1].start()
@@ -369,15 +381,20 @@ class ContainerSystem:
 
 		%s
 		'''%(param_url)
-		if url not in self.images: self.pull(url)
+		if url in self.invalid: return
+		if url not in self.images:
+			logger.debug("%s has not been pulled. Pulling now."%(url))
+			self.pull(url)
 		if url not in self.progs:
+			logger.debug("Caching all programs in %s"%(url))
 			findStr = 'export IFS=":"; find $PATH -maxdepth 1 \( -type l -o -type f \) -executable -exec basename {} \; | sort -u'
 			if self.system == 'docker':
 				progs = sp.check_output("docker run --rm -it %s bash -c '%s' 2>/dev/null"%(url, findStr), shell=True)
 			elif self.system == 'singularity':
 				progs = sp.check_output("singularity exec %s bash -c '%s' 2>/dev/null"%(self.images[url], findStr), shell=True)
 			else:
-				ee(102, "Unhandled system")
+				logger.error("Unhandled system")
+				sys.exit(102)
 			progList = progs.decode('utf-8').split('\r\n')
 			self.prog_count += Counter(progList)
 			self.progs[url] = set(progList)
@@ -394,7 +411,9 @@ class ContainerSystem:
 		list
 			programs on PATH in container
 		'''%(param_url)
+		if url in self.invalid: return []
 		if url not in self.progs:
+			logger.debug("Programs have not yet been cached for %s"%(url))
 			self.cacheProgs(self, url)
 		if blacklist:
 			return list(self.progs[url]-self.blacklist)
@@ -413,6 +432,9 @@ class ContainerSystem:
 		Creates a list of programs on the path of newURL that do not exist in fromURL
 		'''
 		for url in (fromURL, newURL):
+			if url in self.invalid:
+				logger.error("%s is an invalid URL"%(url))
+				sys.exit(110)
 			if url not in self.progs: self.cacheProgs(url)
 		return list(self.progs[newURL].difference(self.progs[fromURL]))
 	def findCommon(self, p=25):
@@ -439,6 +461,7 @@ class ContainerSystem:
 
 		%s
 		'''%(param_url)
+		if url in self.invalid: return
 		if url not in self.progs: self.cacheProgs(url)
 		#####
 		name, tag = self.name_tag[url]
@@ -490,7 +513,8 @@ prereq("tacc-singularity")
 		elif self.system == 'docker':
 			prefix = 'docker run --rm -it %s'%(img_path)
 		else:
-			ee(105, "Unhandled system")
+			logger.error("Unhandled system")
+			sys.exit(102)
 		for prog in progList:
 			bash_string = 'eval $(%s %s "$@")'%(prefix, prog)
 			csh_string = 'eval `%s %s "$*"`'%(prefix, prog)

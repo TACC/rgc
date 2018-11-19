@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/16/2018
+# Last Modified: 11/19/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -36,7 +36,7 @@
 ###############################################################################
 
 """
-Setup script for gantry-crane
+Setup script for rgc
 """
 
 try:
@@ -44,15 +44,15 @@ try:
 except:
 	from distutils.core import setup, Extension
 
-setup(name = "gantry-crane",
+setup(name = "rgc",
 	version = "0.1.0",
 	author = "Greg Zynda",
 	author_email="gzynda@tacc.utexas.edu",
 	license="BSD-3",
 	description="pulls and converts containers to LMOD modules",
-	install_requires = ['numpy'],
 	tests_require = ['mock'],
-	packages = ["gantry-crane"],
-	scripts = ["bin/gantry-crane"],
+	packages = ["rgc"],
+	scripts = ["bin/rgc"],
 	test_suite="tests")
 	#package_data={'bioitools/test_data':['test.fa.fai']})
+	#install_requires = ['numpy'],
