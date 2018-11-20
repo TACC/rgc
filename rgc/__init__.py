@@ -202,6 +202,7 @@ class ContainerSystem:
 		bool
 			url is valid
 		'''%(param_url)
+		tag = url.split(':')[1]
 		if tag not in self.getTags(url):
 			self.invalid.add(url)
 			return False
@@ -220,6 +221,7 @@ class ContainerSystem:
 		name = url.split(':')[0]
 		if url not in self.registry: self.getRegistry(url)
 		if self.registry[url] == 'quay':
+			name = '/'.join(name.split('/')[1:])
 			query = 'https://quay.io/api/v1/repository/%s/tag'%(name)
 			key = 'tags'
 		else:
@@ -240,7 +242,7 @@ class ContainerSystem:
 		%s
 		'''%(param_url)
 		threads = []
-		if self.validate(url):
+		if self.validateURL(url):
 			self.getNameTag(url)
 			for func in (self.pullImage, self.getMetadata, self.getFullURL):
 				threads.append(Thread(target=func, args=(url,)))
@@ -265,7 +267,7 @@ class ContainerSystem:
 		else:
 			base = 'https://hub.docker.com/r/%s'
 		self.full_url[url] = base%(name)
-		ret = urllib.urlopen(self.full_url[url]).getcode()
+		ret = urllib2.urlopen(self.full_url[url]).getcode()
 		assert(ret == 200)
 	def getNameTag(self, url):
 		'''
@@ -312,7 +314,7 @@ class ContainerSystem:
 		else:
 			logger.error("Unhandled system")
 			sys.exit(102)
-		print("Pulled %s"%(url))
+		logger.info("Pulled %s"%(url))
 	def deleteImage(self, url):
 		'''
 		Deletes a cached image
@@ -327,7 +329,7 @@ class ContainerSystem:
 		elif self.system == 'singularity':
 			os.remove(self.images[url])
 		del self.images[url]
-		print("Deleted %s"%(url))
+		logger.info("Deleted %s"%(url))
 	def getMetadata(self, url):
 		'''
 		Assuming the image is a biocontainer,
@@ -353,7 +355,8 @@ class ContainerSystem:
 			desc = resp_json['description']
 			if 'homepage' in resp_json: self.homepage[url] = resp_json['homepage']
 		except urllib2.HTTPError:
-			keywords = ["Biocontainer"]
+			functions = ["Bioinformatics"]
+			topics = ["Biocontainer"]
 			desc = "The %s package"%(name)
 		self.categories[url] = functions
 		self.keywords[url] = topics
@@ -362,7 +365,7 @@ class ContainerSystem:
 		'''
 		Runs self.cachProgs on all containers concurrently with threads
 		'''
-		print("#"*50+"\nScanning programs in containers\n"+"#"*50)
+		logger.info("#"*50+"\nScanning programs in containers\n"+"#"*50)
 		threads = []
 		for url in set(self.images.keys())-self.invalid:
 			self.cacheProgs(url)
@@ -427,7 +430,7 @@ class ContainerSystem:
 		%s
 		'''%(param_url)
 		return self.getProgs(url, blacklist=False)
-	def diffProgs(self, fromURL, newURL):
+	def _diffProgs(self, fromURL, newURL):
 		'''
 		Creates a list of programs on the path of newURL that do not exist in fromURL
 		'''
@@ -450,11 +453,11 @@ class ContainerSystem:
 		'''
 		n_images = len(self.progs)
 		n_percentile = p*n_images/100.0
-		print("Cached %i images and %i unique programs"%(n_images,len(self.prog_count)))
-		print("Excluding programs in >= %i%% of images"%(p))
-		print("Excluding programs in >= %.2f images"%(n_percentile))
+		logger.info("Cached %i images and %i unique programs"%(n_images,len(self.prog_count)))
+		logger.info("Excluding programs in >= %i%% of images"%(p))
+		logger.info("Excluding programs in >= %.2f images"%(n_percentile))
 		self.blacklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
-		print("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
+		logger.debug("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
 	def genLMOD(self, url):
 		'''
 		Generates an Lmod modulefile based on the cached container.
