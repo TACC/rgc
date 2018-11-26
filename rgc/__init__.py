@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/19/2018
+# Last Modified: 11/26/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -297,8 +297,12 @@ class ContainerSystem:
 		'''%(param_url)
 		if self.system == 'docker':
 			if self.forceImage:
-				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s'"%(self.containerDir, url)
-				imgFile = sp.check_output(cmd, shell=True).split('\n')[-1].split(' ')[-1]
+				absPath = os.path.join(os.getcwd(), self.containerDir)
+				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s'"%(absPath, url)
+				logger.debug(cmd)
+				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
+				output = [x for x in output if '.simg' in x]
+				imgFile = output[-1].split(' ')[-1]
 				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
 				assert(os.path.exists(newName))
 				self.images[url] = newName

@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/19/2018
+# Last Modified: 11/21/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -59,11 +59,12 @@ from rgc import ContainerSystem
 # Variables
 outDir = "test_system"
 
-class TestPlateReader(unittest.TestCase):
+class TestRGC(unittest.TestCase):
 	def setUp(self):
 		self.cDir = os.path.join(outDir, 'containers')
 		self.mDir = os.path.join(outDir, 'modules')
 		self.good_dh_url = 'biocontainers/samtools:v1.7.0_cv2'
+		self.good_dh_progs = os.path.join(os.path.dirname(__file__), 'samtools.txt')
 		self.bad_dh_url = 'biocontainers/samtools:bananas'
 		self.good_quay_url = 'quay.io/biocontainers/samtools:1.9--h8ee4bcc_1'
 		self.bad_quay_url = 'quay.io/biocontainers/samtools:bananas'
@@ -119,11 +120,15 @@ class TestPlateReader(unittest.TestCase):
 	def testPullForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
 		for url in self.urls: cSystem.pull(url)
+		output = logStream.getvalue()
+		print(output)
 		for url in self.good_urls:
+			print(cSystem.images)
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			self.assertTrue(url in cSystem.full_url)
 			self.assertTrue(url in cSystem.keywords)
 		for url in self.bad_urls:
+			print(cSystem.images)
 			self.assertFalse(os.path.exists(cSystem.images[url]))
 			self.assertFalse(url in cSystem.full_url)
 			self.assertFalse(url in cSystem.keywords)
@@ -174,9 +179,10 @@ class TestPlateReader(unittest.TestCase):
 			self.assertFalse(url in cSystem.progs)
 	def testCacheProgs(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		progs = set([])
-		cSystem.cacheProgs(self.good_dh_url)
-		self.assertEqual(cSystem.progs[self.good_dh_url], progs)
+		with open(self.good_dh_progs,'r') as IF:
+			progs = set([l.rstrip('\n') for l in IF.readlines()])
+			cSystem.cacheProgs(self.good_dh_url)
+			self.assertEqual(cSystem.progs[self.good_dh_url], progs)
 	def testFindCommon(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		cSystem.pull(self.good_dh_url)
@@ -186,7 +192,7 @@ class TestPlateReader(unittest.TestCase):
 		self.assertTrue('samtools' in cSystem.getProgs(self.good_dh_url))
 		self.assertFalse('cp' in cSystem.getProgs(self.good_dh_url))
 		self.assertTrue('cp' in cSystem.getProgs(self.good_dh_url, blacklist=False))
-	def testGenLMOD(url):
+	def testGenLMOD(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		url = self.good_dh_url
 		cSystem.pull(url)
