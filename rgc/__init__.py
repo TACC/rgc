@@ -56,7 +56,6 @@ except: import urllib.request as urllib2
 
 # Environment
 FORMAT = "[%(levelname)s - %(filename)s:%(lineno)s - %(funcName)15s] %(message)s"
-param_url = "Parameters\n\t\t----------\n\t\turl : str\n\t\t\tImage url used to pull"
 
 def main():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''\
@@ -187,8 +186,11 @@ class ContainerSystem:
 		'''
 		Sets self.registry[url] with the registry that tracks the URL
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		self.registry[url] = 'dockerhub'
 		if 'quay' in url:
 			self.registry[url] = 'quay'
@@ -196,13 +198,16 @@ class ContainerSystem:
 		'''
 		Addes url to the self.invalid set and returns False when a URL is invalid
 		
-		%s
+		Parameters
+		----------
+		url : str
+			Image url used to pull
 		
 		Returns
 		-------
 		bool
 			url is valid
-		'''%(param_url)
+		'''
 		tag = url.split(':')[1]
 		if tag not in self.getTags(url):
 			self.invalid.add(url)
@@ -212,13 +217,16 @@ class ContainerSystem:
 		'''
 		Returns all tags for the image specified with URL
 		
-		%s
+		Parameters
+		----------
+		url : str
+			Image url used to pull
 		
 		Returns
 		-------
 		set
 			all tags associated with main image URL
-		'''%(param_url)
+		'''
 		name = url.split(':')[0]
 		if url not in self.registry: self.getRegistry(url)
 		if self.registry[url] == 'quay':
@@ -245,8 +253,11 @@ class ContainerSystem:
 
 		concurrently with threads
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		threads = []
 		if self.validateURL(url):
 			self.getNameTag(url)
@@ -264,8 +275,11 @@ class ContainerSystem:
 
 		This does not validate the url
 		
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		name = url.split(':')[0]
 		if "quay" in url:
 			name = '/'.join(name.split('/')[1:])
@@ -281,8 +295,11 @@ class ContainerSystem:
 
 			self.name_tag[url]
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		tool_tag = 'latest'
 		if ':' in url:
 			tool_name, tool_tag = url.split(':')
@@ -301,8 +318,11 @@ class ContainerSystem:
 
 			NOTE - this image must be valid
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		if self.system == 'docker':
 			if self.forceImage:
 				absPath = os.path.join(os.getcwd(), self.containerDir)
@@ -331,8 +351,11 @@ class ContainerSystem:
 		'''
 		Deletes a cached image
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		if self.system == 'docker':
 			if self.forceImage:
 				os.remove(self.images[url])
@@ -352,8 +375,11 @@ class ContainerSystem:
 
 		are set after querying https://dev.bio.tools
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		if url not in self.name_tag: self.getNameTag(url)
 		name = self.name_tag[url][0]
 		md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
@@ -395,8 +421,11 @@ class ContainerSystem:
 
 			self.prog_count[prog]
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		if url in self.invalid: return
 		if url not in self.images:
 			logger.debug("%s has not been pulled. Pulling now."%(url))
@@ -418,7 +447,10 @@ class ContainerSystem:
 		'''
 		Retruns a list of all programs on the path of a url that are not blacklisted
 
-		%s
+		Parameters
+		----------
+		url : str
+			Image url used to pull
 		blacklist : bool
 			Filter out blacklisted programs
 
@@ -426,7 +458,7 @@ class ContainerSystem:
 		-------
 		list
 			programs on PATH in container
-		'''%(param_url)
+		'''
 		if url in self.invalid: return []
 		if url not in self.progs:
 			logger.debug("Programs have not yet been cached for %s"%(url))
@@ -440,8 +472,11 @@ class ContainerSystem:
 
 		This is a shortcut for self.getProgs(url, blaclist=False)
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		return self.getProgs(url, blacklist=False)
 	def _diffProgs(self, fromURL, newURL):
 		'''
@@ -475,8 +510,11 @@ class ContainerSystem:
 		'''
 		Generates an Lmod modulefile based on the cached container.
 
-		%s
-		'''%(param_url)
+		Parameters
+		----------
+		url : str
+			Image url used to pull
+		'''
 		if url in self.invalid: return
 		if url not in self.progs: self.cacheProgs(url)
 		#####
