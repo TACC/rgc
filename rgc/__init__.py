@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/26/2018
+# Last Modified: 11/28/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -50,6 +50,7 @@ import sys, argparse, os, json, logging
 logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
+from time import sleep
 try: import urllib2
 except: import urllib.request as urllib2
 
@@ -227,9 +228,14 @@ class ContainerSystem:
 		else:
 			query = 'https://hub.docker.com/v2/repositories/%s/tags'%(name)
 			key = 'results'
-		try: resp = json.load(urllib2.urlopen(query))
+		try:
+			resp = json.load(urllib2.urlopen(query))
+			results = resp[key]
+			while 'next' in resp and resp['next']:
+				resp = json.load(urllib2.urlopen(resp['next']))
+				results += resp[key]
 		except urllib2.HTTPError: return set([])
-		return set([t['name'] for t in resp[key]])
+		return set([t['name'] for t in results])
 	def pull(self, url):
 		'''
 		Pulls:
@@ -256,7 +262,7 @@ class ContainerSystem:
 
 			self.full_url[url]
 
-		and asserts that the URL should return a 200 code
+		This does not validate the url
 		
 		%s
 		'''%(param_url)
@@ -267,8 +273,8 @@ class ContainerSystem:
 		else:
 			base = 'https://hub.docker.com/r/%s'
 		self.full_url[url] = base%(name)
-		ret = urllib2.urlopen(self.full_url[url]).getcode()
-		assert(ret == 200)
+		#ret = urllib2.urlopen(self.full_url[url]).getcode()
+		#assert(ret == 200)
 	def getNameTag(self, url):
 		'''
 		Stores the container (name, tag) from a url in
@@ -292,6 +298,8 @@ class ContainerSystem:
 			self.images[url]
 
 		as the URL or path for subsequent interactions.
+
+			NOTE - this image must be valid
 
 		%s
 		'''%(param_url)
@@ -346,6 +354,7 @@ class ContainerSystem:
 
 		%s
 		'''%(param_url)
+		if url not in self.name_tag: self.getNameTag(url)
 		name = self.name_tag[url][0]
 		md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
 		self.homepage[url] = False

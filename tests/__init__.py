@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/21/2018
+# Last Modified: 11/28/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -120,16 +120,12 @@ class TestRGC(unittest.TestCase):
 	def testPullForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
 		for url in self.urls: cSystem.pull(url)
-		output = logStream.getvalue()
-		print(output)
 		for url in self.good_urls:
-			print(cSystem.images)
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			self.assertTrue(url in cSystem.full_url)
 			self.assertTrue(url in cSystem.keywords)
 		for url in self.bad_urls:
-			print(cSystem.images)
-			self.assertFalse(os.path.exists(cSystem.images[url]))
+			self.assertFalse(url in cSystem.images)
 			self.assertFalse(url in cSystem.full_url)
 			self.assertFalse(url in cSystem.keywords)
 	def testGetFull(self):
@@ -148,19 +144,26 @@ class TestRGC(unittest.TestCase):
 		self.assertEqual(cSystem.name_tag['gzynda/singularity'], ('singularity', 'latest'))
 	def testPullImageForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
-		for url in self.urls: cSystem.pullImage(url)
 		for url in self.good_urls:
+			cSystem.pullImage(url)
 			self.assertTrue(os.path.exists(cSystem.images[url]))
-		for url in self.bad_urls:
-			self.assertFalse(os.path.exists(cSystem.images[url]))
 	def testDeleteImage(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
 		for url in self.good_urls:
-			self.assertFalse(os.path.exists(cSystem.images[url]))
 			cSystem.pullImage(url)
+			cSystem.deleteImage(url)
+			self.assertFalse(url in cSystem.images)
+	def testDeleteImageForce(self):
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
+		for url in self.good_urls:
+			if url in cSystem.images:
+				self.assertFalse(os.path.exists(cSystem.images[url]))
+			cSystem.pullImage(url)
+			img_path = cSystem.images[url]
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			cSystem.deleteImage(url)
-			self.assertFalse(os.path.exists(cSystem.images[url]))
+			self.assertFalse(os.path.exists(img_path))
+			self.assertFalse(url in cSystem.images)
 	def testMetadata(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		url = self.good_dh_url
@@ -202,7 +205,8 @@ class TestRGC(unittest.TestCase):
 		cSystem.genLMOD(url)
 		mFile = os.path.join(cSystem.moduleDir, cSystem.name_tag[url][0], cSystem.name_tag[url][1]+'.lua')
 		self.assertTrue(os.path.exists(mFile))
-		self.assertTrue('samtools' in open(mFile,'r').read())
+		with open(mFile,'r') as MF:
+			self.assertTrue('samtools' in MF.read())
 
 if __name__ == "__main__":
 	unittest.main()
