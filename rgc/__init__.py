@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/28/2018
+# Last Modified: 11/29/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -38,11 +38,7 @@
 '''
 Rolling Gantry Crane - Pulls and converts containers to Lmod modulefiles
 
-.. module:: rgc
-   :platform: Linux, MacOS
-   :synopsis: Pulls and converts containers to Lmod modulefiles
-
-.. moduleauthor:: Greg Zynda <gzynda@tacc.utexas.edu>
+Author: Greg Zynda <gzynda@tacc.utexas.edu>
 '''
 
 import subprocess as sp
@@ -50,7 +46,6 @@ import sys, argparse, os, json, logging
 logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
-from time import sleep
 try: import urllib2
 except: import urllib.request as urllib2
 
@@ -74,6 +69,12 @@ Requirements
 
 - docker or singularity
 - python
+
+Platorms
+------------------------------------------------------
+
+- Linux
+- MacOS
 
 Usage
 ------------------------------------------------------
@@ -137,9 +138,17 @@ Usage
 	
 
 class ContainerSystem:
+	'''
+	Class for managing the rgc image cache
+		
+	# Parameters
+	cDir (str) : Path to output container directory
+	mDir (str) : Path to output module directory
+	forceImage (bool) : Option to force the creation of singularity images
+	'''
 	def __init__(self, cDir, mDir, forceImage):
 		'''
-		Class for managing image cache
+		ContainerSystem initializer
 		'''
 		self.system = self.detectSystem()
 		self.containerDir = cDir
@@ -166,12 +175,11 @@ class ContainerSystem:
 		'''
 		Detects the container system type {docker, singularity}
 
-		Exits with code 101 if neither is found.
+		# Raises
+		101 : if neither docker or singularity is found
 
-		Returns
-		-------
-		str
-			conainter system
+		# Returns
+		str : conainter system
 		'''
 		if not sp.call('docker info &>/dev/null', shell=True):
 			logger.debug("Detected docker for container management")
@@ -186,10 +194,8 @@ class ContainerSystem:
 		'''
 		Sets self.registry[url] with the registry that tracks the URL
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		self.registry[url] = 'dockerhub'
 		if 'quay' in url:
@@ -198,15 +204,11 @@ class ContainerSystem:
 		'''
 		Addes url to the self.invalid set and returns False when a URL is invalid
 		
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		
-		Returns
-		-------
-		bool
-			url is valid
+		# Returns
+		bool : 	url is valid
 		'''
 		tag = url.split(':')[1]
 		if tag not in self.getTags(url):
@@ -217,15 +219,11 @@ class ContainerSystem:
 		'''
 		Returns all tags for the image specified with URL
 		
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		
-		Returns
-		-------
-		set
-			all tags associated with main image URL
+		# Returns
+		set : all tags associated with main image URL
 		'''
 		name = url.split(':')[0]
 		if url not in self.registry: self.getRegistry(url)
@@ -246,17 +244,14 @@ class ContainerSystem:
 		return set([t['name'] for t in results])
 	def pull(self, url):
 		'''
-		Pulls:
+		Uses threads to concurrently pull:
+
 		 - image
 		 - metadata
 		 - repository info
 
-		concurrently with threads
-
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		threads = []
 		if self.validateURL(url):
@@ -269,16 +264,12 @@ class ContainerSystem:
 			logger.warning("Could not find %s. Excluding it future operations"%(url))
 	def getFullURL(self, url):
 		'''
-		Stores the web URL for viewing the specified image in
+		Stores the web URL for viewing the specified image in `self.full_url[url]`
 
-			self.full_url[url]
-
-		This does not validate the url
+		> NOTE: This does not validate the url
 		
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		name = url.split(':')[0]
 		if "quay" in url:
@@ -291,14 +282,10 @@ class ContainerSystem:
 		#assert(ret == 200)
 	def getNameTag(self, url):
 		'''
-		Stores the container (name, tag) from a url in
+		Stores the container (name, tag) from a url in `self.name_tag[url]`
 
-			self.name_tag[url]
-
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		tool_tag = 'latest'
 		if ':' in url:
@@ -312,16 +299,14 @@ class ContainerSystem:
 		Pulls an image using either docker or singularity and
 		sets
 
-			self.images[url]
+		 - `self.images[url]`
 
 		as the URL or path for subsequent interactions.
 
-			NOTE - this image must be valid
+		> NOTE - this image must be valid
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		if self.system == 'docker':
 			if self.forceImage:
@@ -351,10 +336,8 @@ class ContainerSystem:
 		'''
 		Deletes a cached image
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		if self.system == 'docker':
 			if self.forceImage:
@@ -369,16 +352,14 @@ class ContainerSystem:
 		'''
 		Assuming the image is a biocontainer,
 
-			self.categories[url]
-			self.keywords[url]
-			self.description[url]
+		 - `self.categories[url]`
+		 - `self.keywords[url]`
+		 - `self.description[url]`
 
 		are set after querying https://dev.bio.tools
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		if url not in self.name_tag: self.getNameTag(url)
 		name = self.name_tag[url][0]
@@ -402,7 +383,7 @@ class ContainerSystem:
 		self.description[url] = desc
 	def scanAll(self):
 		'''
-		Runs self.cachProgs on all containers concurrently with threads
+		Runs `self.cachProgs` on all containers concurrently with threads
 		'''
 		logger.info("#"*50+"\nScanning programs in containers\n"+"#"*50)
 		threads = []
@@ -415,16 +396,14 @@ class ContainerSystem:
 		'''
 		Crawls all directories on a container's PATH and caches a list of all executable files in
 
-			self.progs[url]
+		 - `self.progs[url]`
 		
 		and counts the global occurance of each program in
 
-			self.prog_count[prog]
+		 - `self.prog_count[prog]`
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		if url in self.invalid: return
 		if url not in self.images:
@@ -447,17 +426,12 @@ class ContainerSystem:
 		'''
 		Retruns a list of all programs on the path of a url that are not blacklisted
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
-		blacklist : bool
-			Filter out blacklisted programs
+		# Parameters
+		url (str) : Image url used to pull
+		blacklist (bool) : Filter out blacklisted programs
 
-		Returns
-		-------
-		list
-			programs on PATH in container
+		# Returns
+		list : programs on PATH in container
 		'''
 		if url in self.invalid: return []
 		if url not in self.progs:
@@ -470,12 +444,10 @@ class ContainerSystem:
 		'''
 		Returns a list of all programs on the path of url.
 
-		This is a shortcut for self.getProgs(url, blaclist=False)
+		This is a shortcut for `self.getProgs(url, blaclist=False)`
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		return self.getProgs(url, blacklist=False)
 	def _diffProgs(self, fromURL, newURL):
@@ -492,12 +464,10 @@ class ContainerSystem:
 		'''
 		Creates a blacklist containing all programs that are in at least p% of the images
 
-			self.blacklist[url] = set([prog, prog, ...])
+		 - `self.blacklist[url] = set([prog, prog, ...])`
 
-		Parameters
-		----------
-		p : int
-			Percentile of images
+		# Parameters
+		p (int) : Percentile of images
 		'''
 		n_images = len(self.progs)
 		n_percentile = p*n_images/100.0
@@ -510,10 +480,8 @@ class ContainerSystem:
 		'''
 		Generates an Lmod modulefile based on the cached container.
 
-		Parameters
-		----------
-		url : str
-			Image url used to pull
+		# Parameters
+		url (str) : Image url used to pull
 		'''
 		if url in self.invalid: return
 		if url not in self.progs: self.cacheProgs(url)

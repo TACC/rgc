@@ -1,57 +1,10 @@
-gantry-crane
-======================================================
+# rgc
 
-Pulls containers from either:
+Rolling Gantry Crane - Pulls and converts containers to Lmod modulefiles
 
-- docker hub
-- quay.io
+Author : Greg Zynda <gzynda@tacc.utexas.edu>
 
-and generates Lmod modulefiles for us on HPC systems.
-
-Author: Greg Zynda <gzynda@tacc.utexas.edu>
-
-Requirements
-------------------------------------------------------
-
-- docker or singularity
-- python
-
-Platorms
-------------------------------------------------------
-
-- Linux
-- MacOS
-
-Usage
-------------------------------------------------------
-
-```
-usage: gantry-crane [-h] [-I PATH] [-M PATH] [-P STR] [-p INT] [-S] [-v]
-                   URL [URL ...]
-
-positional arguments:
-  URL                   Image urls to pull
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -I PATH, --imgdir PATH
-                        Directory used to cache singularity images
-                        [./containers]
-  -M PATH, --moddir PATH
-                        Path to modulefiles [./modulefiles]
-  -P STR, --prefix STR  Prefix string to image directory for when an
-                        environment variable is used - not used by default
-  -p INT, --percentile INT
-                        Remove packages that [25]
-  -S, --singularity     Images are cached as singularity containers - even
-                        when docker is present
-  -v, --verbose         Enable verbose logging
-```
-
-API Documentation
-------------------------------------------------------
-
-### ContainerSystem
+## ContainerSystem
 ```python
 ContainerSystem(self, cDir, mDir, forceImage)
 ```
@@ -64,7 +17,7 @@ __Parameters__
 - __mDir (str) __: Path to output module directory
 - __forceImage (bool) __: Option to force the creation of singularity images
 
-#### detectSystem
+### detectSystem
 ```python
 ContainerSystem.detectSystem(self)
 ```
@@ -79,7 +32,7 @@ __Returns__
 
 `str `: conainter system
 
-#### getRegistry
+### getRegistry
 ```python
 ContainerSystem.getRegistry(self, url)
 ```
@@ -90,7 +43,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### validateURL
+### validateURL
 ```python
 ContainerSystem.validateURL(self, url)
 ```
@@ -105,7 +58,7 @@ __Returns__
 
 `bool `: 	url is valid
 
-#### getTags
+### getTags
 ```python
 ContainerSystem.getTags(self, url)
 ```
@@ -120,7 +73,7 @@ __Returns__
 
 `set `: all tags associated with main image URL
 
-#### pull
+### pull
 ```python
 ContainerSystem.pull(self, url)
 ```
@@ -135,7 +88,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### getFullURL
+### getFullURL
 ```python
 ContainerSystem.getFullURL(self, url)
 ```
@@ -148,7 +101,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### getNameTag
+### getNameTag
 ```python
 ContainerSystem.getNameTag(self, url)
 ```
@@ -159,7 +112,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### pullImage
+### pullImage
 ```python
 ContainerSystem.pullImage(self, url)
 ```
@@ -177,7 +130,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### deleteImage
+### deleteImage
 ```python
 ContainerSystem.deleteImage(self, url)
 ```
@@ -188,7 +141,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### getMetadata
+### getMetadata
 ```python
 ContainerSystem.getMetadata(self, url)
 ```
@@ -205,14 +158,14 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### scanAll
+### scanAll
 ```python
 ContainerSystem.scanAll(self)
 ```
 
 Runs `self.cachProgs` on all containers concurrently with threads
 
-#### cacheProgs
+### cacheProgs
 ```python
 ContainerSystem.cacheProgs(self, url)
 ```
@@ -229,7 +182,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### getProgs
+### getProgs
 ```python
 ContainerSystem.getProgs(self, url, blacklist=True)
 ```
@@ -245,7 +198,7 @@ __Returns__
 
 `list `: programs on PATH in container
 
-#### getAllProgs
+### getAllProgs
 ```python
 ContainerSystem.getAllProgs(self, url)
 ```
@@ -258,7 +211,7 @@ __Parameters__
 
 - __url (str) __: Image url used to pull
 
-#### findCommon
+### findCommon
 ```python
 ContainerSystem.findCommon(self, p=25)
 ```
@@ -271,7 +224,7 @@ __Parameters__
 
 - __p (int) __: Percentile of images
 
-#### genLMOD
+### genLMOD
 ```python
 ContainerSystem.genLMOD(self, url)
 ```

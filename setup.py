@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/19/2018
+# Last Modified: 11/29/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -50,7 +50,7 @@ setup(name = "rgc",
 	author_email="gzynda@tacc.utexas.edu",
 	license="BSD-3",
 	description="pulls and converts containers to LMOD modules",
-	tests_require = ['mock'],
+	tests_require = ['mock','pydoc-markdown'],
 	packages = ["rgc"],
 	scripts = ["bin/rgc"],
 	test_suite="tests")
