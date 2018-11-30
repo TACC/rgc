@@ -40,11 +40,12 @@ import sys, argparse, os, json, logging
 logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
+from shutil import move
 try: import urllib2
 except: import urllib.request as urllib2
 
 # Environment
-FORMAT = "[%(levelname)s - %(filename)s:%(lineno)s - %(funcName)15s] %(message)s"
+FORMAT = "[%(levelname)s - %(funcName)s] %(message)s"
 
 def main():
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''\
@@ -83,7 +84,7 @@ Usage
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
 	parser.add_argument('-p', '--percentile', metavar='INT', \
-		help='Remove packages that [%(default)s]', default='25', type=str)
+		help='Remove packages that [%(default)s]', default='25', type=int)
 	parser.add_argument('-S', '--singularity', action='store_true', \
 		help='Images are cached as singularity containers - even when docker is present')
 	parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
@@ -107,7 +108,7 @@ Usage
 	# Pull default images
 	################################
 	defaultURLS = ['ubuntu:xenial', 'centos:7', 'ubuntu:bionic', 'continuumio/miniconda:latest', 'biocontainers/biocontainers:latest']
-	logger.debug("Pulling default images for baeline PATHs")
+	logger.debug("Pulling default images for baseline PATHs")
 	for url in defaultURLS: cSystem.pull(url)
 	logger.debug("DONE pulling default images")
 	################################
@@ -123,7 +124,7 @@ Usage
 	# Generate module files
 	################################
 	logger.debug("Creating Lmod files")
-	for url in urls: cSystem.genLMOD(url, args.prefix)
+	for url in args.urls: cSystem.genLMOD(url, args.prefix)
 	logger.info("Finished creating Lmod files for all %i containers"%(len(args.urls)))
 	################################
 	# Delete default images
@@ -220,6 +221,7 @@ class ContainerSystem:
 		set: all tags associated with main image URL
 		'''
 		name = url.split(':')[0]
+		if '/' not in name: name = 'library/'+name
 		if url not in self.registry: self.getRegistry(url)
 		if self.registry[url] == 'quay':
 			name = '/'.join(name.split('/')[1:])
@@ -317,10 +319,10 @@ class ContainerSystem:
 				sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
 				self.images[url] = url
 		elif self.system == 'singularity':
-			imgFile = sp.check_output('singularity pull docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-1].split(' ')[-1]
+			imgFile = sp.check_output('singularity pull -F docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-2].split(' ')[-1]
 			newName = os.path.join(self.containerDir, os.path.basename(imgFile))
 			if not os.path.exists(newName):
-				os.rename(imgFile, newName)
+				move(imgFile, newName)
 			self.images[url] = newName
 		else:
 			logger.error("Unhandled system")
@@ -379,7 +381,7 @@ class ContainerSystem:
 		'''
 		Runs `self.cachProgs` on all containers concurrently with threads
 		'''
-		logger.info("#"*50+"\nScanning programs in containers\n"+"#"*50)
+		logger.info("\n"+"#"*50+"\nScanning programs in containers\n"+"#"*50)
 		threads = []
 		for url in set(self.images.keys())-self.invalid:
 			self.cacheProgs(url)
@@ -408,12 +410,13 @@ class ContainerSystem:
 			findStr = 'export IFS=":"; find $PATH -maxdepth 1 \( -type l -o -type f \) -executable -exec basename {} \; | sort -u'
 			if self.system == 'docker':
 				progs = sp.check_output("docker run --rm -it %s bash -c '%s' 2>/dev/null"%(url, findStr), shell=True)
+				progList = progs.decode('utf-8').split('\r\n')
 			elif self.system == 'singularity':
 				progs = sp.check_output("singularity exec %s bash -c '%s' 2>/dev/null"%(self.images[url], findStr), shell=True)
+				progList = progs.decode('utf-8').split('\n')
 			else:
 				logger.error("Unhandled system")
 				sys.exit(102)
-			progList = progs.decode('utf-8').split('\r\n')
 			self.prog_count += Counter(progList)
 			self.progs[url] = set(progList)
 	def getProgs(self, url, blacklist=True):
@@ -470,7 +473,7 @@ class ContainerSystem:
 		logger.info("Excluding programs in >= %.2f images"%(n_percentile))
 		self.blacklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
 		logger.debug("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
-	def genLMOD(self, url):
+	def genLMOD(self, url, pathPrefix):
 		'''
 		Generates an Lmod modulefile based on the cached container.
 
@@ -511,7 +514,7 @@ please contact the developer directly at
 	%s
 ]]'''
 		module_text = '''
-help(help_message,"\n")
+help(help_message,"\\n")
 
 whatis("Name: %s")
 whatis("Version: %s")
@@ -525,7 +528,7 @@ prereq("tacc-singularity")
 		full_text = help_text%(url, progStr, full_url, name, home)
 		full_text += module_text%(name, tag, cats, keys, desc, full_url)
 		if self.system == 'singularity':
-			prefix = 'singularity exec ${BIOCONTAINER_DIR}/%s'%(img_path)
+			prefix = 'singularity exec %s'%(os.path.join(pathPrefix, img_path))
 		elif self.system == 'docker':
 			prefix = 'docker run --rm -it %s'%(img_path)
 		else:
@@ -534,7 +537,7 @@ prereq("tacc-singularity")
 		for prog in progList:
 			bash_string = 'eval $(%s %s "$@")'%(prefix, prog)
 			csh_string = 'eval `%s %s "$*"`'%(prefix, prog)
-			func_string = 'set_shell_function("%s","%s","%s")\n'%(prog, bash_string, csh_string)
+			func_string = 'set_shell_function("%s",\'%s\',\'%s\')\n'%(prog, bash_string, csh_string)
 			full_text += func_string
 		#####
 		mPath = os.path.join(self.moduleDir, name)
