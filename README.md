@@ -50,7 +50,19 @@ optional arguments:
 Pulling and generating modules for bwa, samtools, and bowtie
 
 ```
-rgc -P /data/03076/gzynda/rgc_test -v biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+rgc biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+```
+
+and if you don't have a system running Lmod, feel free to test in docker
+
+```
+$ docker run --privileged --rm -it gzynda/rgc:latest bash
+
+$ rgc biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+$ module use ${PWD}/modulefiles
+$ module avail
+$ module load bwa
+$ bwa
 ```
 
 API Documentation
@@ -58,7 +70,7 @@ API Documentation
 
 ### ContainerSystem
 ```python
-ContainerSystem(self, cDir, mDir, forceImage)
+ContainerSystem(self, cDir='./containers', mDir='./modulefiles', forceImage=False, prereqs='')
 ```
 
 Class for managing the rgc image cache
@@ -68,6 +80,7 @@ __Parameters__
 - __cDir (str)__: Path to output container directory
 - __mDir (str)__: Path to output module directory
 - __forceImage (bool)__: Option to force the creation of singularity images
+- __prereqs (str)__: string of prerequisite modules separated by ":"
 
 #### detectSystem
 ```python

@@ -57,7 +57,9 @@ Pulls containers from either:
 - docker hub
 - quay.io
 
-and generates Lmod modulefiles for us on HPC systems.
+and generates Lmod modulefiles for use on HPC systems.
+
+https://github.com/TACC/Lmod
 
 Requirements
 ------------------------------------------------------
@@ -80,6 +82,8 @@ Usage
 		default='./containers', type=str)
 	parser.add_argument('-M', '--moddir', metavar='PATH', \
 		help='Path to modulefiles [%(default)s]', default='./modulefiles', type=str)
+	parser.add_argument('-r', '--requires', metavar='STR', \
+		help='module prerequisites separated by ":" [%(default)s]', default='', type=str)
 	parser.add_argument('-P', '--prefix', metavar='STR', \
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
@@ -103,7 +107,7 @@ Usage
 	# Create container system
 	################################
 	cSystem = ContainerSystem(cDir=args.imgdir, mDir=args.moddir, \
-		forceImage=args.singularity)
+		forceImage=args.singularity, prereqs=args.requires)
 	################################
 	# Pull default images
 	################################
@@ -140,8 +144,9 @@ class ContainerSystem:
 	cDir (str): Path to output container directory
 	mDir (str): Path to output module directory
 	forceImage (bool): Option to force the creation of singularity images
+	prereqs (str): string of prerequisite modules separated by ":"
 	'''
-	def __init__(self, cDir, mDir, forceImage):
+	def __init__(self, cDir='./containers', mDir='./modulefiles', forceImage=False, prereqs=''):
 		'''
 		ContainerSystem initializer
 		'''
@@ -151,9 +156,9 @@ class ContainerSystem:
 		self.forceImage = forceImage
 		if self.system == 'singularity' or forceImage:
 			logger.debug("Creating %s for caching images"%(cDir))
-			os.makedirs(cDir)
+			if not os.path.exists(cDir): os.makedirs(cDir)
 		logger.debug("Creating %s for modulefiles"%(mDir))
-		os.makedirs(mDir)
+		if not os.path.exists(mDir): os.makedirs(mDir)
 		self.invalid = set([])
 		self.images = {}
 		self.registry = {}
@@ -166,6 +171,7 @@ class ContainerSystem:
 		self.full_url = {}
 		self.blacklist = set([])
 		self.prog_count = Counter()
+		self.lmod_prereqs = prereqs.split(':')
 	def detectSystem(self):
 		'''
 		Detects the container system type {docker, singularity}
@@ -319,11 +325,15 @@ class ContainerSystem:
 				sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
 				self.images[url] = url
 		elif self.system == 'singularity':
-			newName = os.path.join(self.containerDir, '%s-%s.simg'%(self.name_tag))
+			name, tag = self.name_tag[url]
+			newName = os.path.join(self.containerDir, '%s-%s.simg'%(name, tag))
 			if os.path.exists(newName):
 				logger.debug("Using previously pulled version of %s"%(url))
 			else:
-				imgFile = sp.check_output('singularity pull -F docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-2].split(' ')[-1]
+				cmd = 'singularity pull -F docker://%s 2>/dev/null'%(url)
+				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
+				output = [x for x in output if '.simg' in x]
+				imgFile = output[-1].split(' ')[-1]
 				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
 				if not os.path.exists(newName):
 					move(imgFile, newName)
@@ -527,10 +537,12 @@ whatis("Keywords: %s")
 whatis("Description: %s")
 whatis("URL: %s")
 
-prereq("tacc-singularity")
 '''
 		full_text = help_text%(url, progStr, full_url, name, home)
 		full_text += module_text%(name, tag, cats, keys, desc, full_url)
+		# add prereqs
+		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
+		# add functions
 		if self.system == 'singularity':
 			if pathPrefix:
 				prefix = 'singularity exec %s'%(os.path.join(pathPrefix, img_path))
@@ -550,7 +562,7 @@ prereq("tacc-singularity")
 		mPath = os.path.join(self.moduleDir, name)
 		if not os.path.exists(mPath): os.makedirs(mPath)
 		outFile = os.path.join(mPath, "%s.lua"%(tag))
-		open(outFile,'w').write(full_text)
+		with open(outFile,'w') as OF: OF.write(full_text)
 
 if __name__ == "__main__":
 	main()
