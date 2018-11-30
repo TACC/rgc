@@ -1,4 +1,4 @@
-gantry-crane
+rgc - Rolling Gantry Crane
 ======================================================
 
 Pulls containers from either:
@@ -7,8 +7,6 @@ Pulls containers from either:
 - quay.io
 
 and generates Lmod modulefiles for us on HPC systems.
-
-Author: Greg Zynda <gzynda@tacc.utexas.edu>
 
 Requirements
 ------------------------------------------------------
@@ -26,9 +24,8 @@ Usage
 ------------------------------------------------------
 
 ```
-usage: gantry-crane [-h] [-I PATH] [-M PATH] [-P STR] [-p INT] [-S] [-v]
-                   URL [URL ...]
-
+usage: rgc [-h] [-I PATH] [-M PATH] [-P STR] [-p INT] [-S] [-v] URL [URL ...]
+ 
 positional arguments:
   URL                   Image urls to pull
 
@@ -58,11 +55,11 @@ ContainerSystem(self, cDir, mDir, forceImage)
 
 Class for managing the rgc image cache
 
-**Parameters**
+__Parameters__
 
-- **cDir (str) **: Path to output container directory
-- **mDir (str) **: Path to output module directory
-- **forceImage (bool) **: Option to force the creation of singularity images
+- __cDir (str)__: Path to output container directory
+- __mDir (str)__: Path to output module directory
+- __forceImage (bool)__: Option to force the creation of singularity images
 
 #### detectSystem
 ```python
@@ -71,13 +68,13 @@ ContainerSystem.detectSystem(self)
 
 Detects the container system type {docker, singularity}
 
-**Raises**
+__Raises__
 
-- `101 `: if neither docker or singularity is found
+- `101`: if neither docker or singularity is found
 
-**Returns**
+__Returns__
 
-`str `: conainter system
+`str`: conainter system
 
 #### getRegistry
 ```python
@@ -86,9 +83,9 @@ ContainerSystem.getRegistry(self, url)
 
 Sets self.registry[url] with the registry that tracks the URL
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### validateURL
 ```python
@@ -97,13 +94,13 @@ ContainerSystem.validateURL(self, url)
 
 Addes url to the self.invalid set and returns False when a URL is invalid
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
-**Returns**
+__Returns__
 
-`bool `: 	url is valid
+`bool`: 	url is valid
 
 #### getTags
 ```python
@@ -112,13 +109,13 @@ ContainerSystem.getTags(self, url)
 
 Returns all tags for the image specified with URL
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
-**Returns**
+__Returns__
 
-`set `: all tags associated with main image URL
+`set`: all tags associated with main image URL
 
 #### pull
 ```python
@@ -131,9 +128,9 @@ Uses threads to concurrently pull:
  - metadata
  - repository info
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### getFullURL
 ```python
@@ -144,9 +141,9 @@ Stores the web URL for viewing the specified image in `self.full_url[url]`
 
 > NOTE: This does not validate the url
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### getNameTag
 ```python
@@ -155,9 +152,9 @@ ContainerSystem.getNameTag(self, url)
 
 Stores the container (name, tag) from a url in `self.name_tag[url]`
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### pullImage
 ```python
@@ -173,9 +170,9 @@ as the URL or path for subsequent interactions.
 
 > NOTE - this image must be valid
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### deleteImage
 ```python
@@ -184,9 +181,9 @@ ContainerSystem.deleteImage(self, url)
 
 Deletes a cached image
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### getMetadata
 ```python
@@ -201,9 +198,9 @@ Assuming the image is a biocontainer,
 
 are set after querying https://dev.bio.tools
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### scanAll
 ```python
@@ -225,9 +222,9 @@ and counts the global occurance of each program in
 
  - `self.prog_count[prog]`
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### getProgs
 ```python
@@ -236,14 +233,14 @@ ContainerSystem.getProgs(self, url, blacklist=True)
 
 Retruns a list of all programs on the path of a url that are not blacklisted
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
-- **blacklist (bool) **: Filter out blacklisted programs
+- __url (str)__: Image url used to pull
+- __blacklist (bool)__: Filter out blacklisted programs
 
-**Returns**
+__Returns__
 
-`list `: programs on PATH in container
+`list`: programs on PATH in container
 
 #### getAllProgs
 ```python
@@ -254,9 +251,9 @@ Returns a list of all programs on the path of url.
 
 This is a shortcut for `self.getProgs(url, blaclist=False)`
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
 #### findCommon
 ```python
@@ -267,9 +264,9 @@ Creates a blacklist containing all programs that are in at least p% of the image
 
  - `self.blacklist[url] = set([prog, prog, ...])`
 
-**Parameters**
+__Parameters__
 
-- **p (int) **: Percentile of images
+- __p (int)__: Percentile of images
 
 #### genLMOD
 ```python
@@ -278,7 +275,7 @@ ContainerSystem.genLMOD(self, url)
 
 Generates an Lmod modulefile based on the cached container.
 
-**Parameters**
+__Parameters__
 
-- **url (str) **: Image url used to pull
+- __url (str)__: Image url used to pull
 
