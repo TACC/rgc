@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/28/2018
+# Last Modified: 11/30/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -58,6 +58,7 @@ from rgc import ContainerSystem
 
 # Variables
 outDir = "test_system"
+if os.path.exists(outDir): rmtree(outDir)
 
 class TestRGC(unittest.TestCase):
 	def setUp(self):
@@ -169,9 +170,9 @@ class TestRGC(unittest.TestCase):
 		url = self.good_dh_url
 		cSystem.getMetadata(url)
 		#####################
-		self.assertEqual(set(cSystem.keywords[url]), set([]))
-		self.assertEqual(set(cSystem.categories[url]), set(['Sequence assembly visualisation', 'Modelling and simulation']))
-		self.assertEqual(cSystem.description[url], 'Various utilities for processing alignments in the SAM format, including variant calling and alignment viewing.')
+		self.assertEqual(set(cSystem.keywords[url]), set(['Mapping','Bioinformatics','Data architecture, analysis and design']))
+		self.assertEqual(set(cSystem.categories[url]), set(['Sequence assembly visualisation', 'Modelling and simulation','Formatting','Sequence alignment']))
+		self.assertEqual(cSystem.description[url], 'A software package with various utilities for processing alignments in the SAM format, including variant calling and alignment viewing.')
 	def testScan(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		for url in self.urls: cSystem.pull(url)
@@ -202,7 +203,7 @@ class TestRGC(unittest.TestCase):
 		cSystem.pull('biocontainers/biocontainers:latest')
 		cSystem.scanAll()
 		cSystem.findCommon(p=60)
-		cSystem.genLMOD(url)
+		cSystem.genLMOD(url, './')
 		mFile = os.path.join(cSystem.moduleDir, cSystem.name_tag[url][0], cSystem.name_tag[url][1]+'.lua')
 		self.assertTrue(os.path.exists(mFile))
 		with open(mFile,'r') as MF:
