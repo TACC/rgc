@@ -1,2 +1,2 @@
 docs:
-	pydocmd simple rgc++ > Documentation.md
+	pydocmd simple rgc++ | sed -e "s/__/**/g" > Documentation.md
