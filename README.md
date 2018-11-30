@@ -45,6 +45,14 @@ optional arguments:
   -v, --verbose         Enable verbose logging
 ```
 
+### Examples
+
+Pulling and generating modules for bwa, samtools, and bowtie
+
+```
+rgc -P /data/03076/gzynda/rgc_test -v biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+```
+
 API Documentation
 ------------------------------------------------------
 
@@ -270,7 +278,7 @@ __Parameters__
 
 #### genLMOD
 ```python
-ContainerSystem.genLMOD(self, url)
+ContainerSystem.genLMOD(self, url, pathPrefix)
 ```
 
 Generates an Lmod modulefile based on the cached container.

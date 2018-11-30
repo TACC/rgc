@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/29/2018
+# Last Modified: 11/30/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -319,10 +319,14 @@ class ContainerSystem:
 				sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
 				self.images[url] = url
 		elif self.system == 'singularity':
-			imgFile = sp.check_output('singularity pull -F docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-2].split(' ')[-1]
-			newName = os.path.join(self.containerDir, os.path.basename(imgFile))
-			if not os.path.exists(newName):
-				move(imgFile, newName)
+			newName = os.path.join(self.containerDir, '%s-%s.simg'%(self.name_tag))
+			if os.path.exists(newName):
+				logger.debug("Using previously pulled version of %s"%(url))
+			else:
+				imgFile = sp.check_output('singularity pull -F docker://%s 2>/dev/null'%(url), shell=True).split('\n')[-2].split(' ')[-1]
+				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
+				if not os.path.exists(newName):
+					move(imgFile, newName)
 			self.images[url] = newName
 		else:
 			logger.error("Unhandled system")
@@ -528,7 +532,10 @@ prereq("tacc-singularity")
 		full_text = help_text%(url, progStr, full_url, name, home)
 		full_text += module_text%(name, tag, cats, keys, desc, full_url)
 		if self.system == 'singularity':
-			prefix = 'singularity exec %s'%(os.path.join(pathPrefix, img_path))
+			if pathPrefix:
+				prefix = 'singularity exec %s'%(os.path.join(pathPrefix, img_path))
+			else:
+				prefix = 'singularity exec %s'%(os.path.join(os.getcwd(), img_path))
 		elif self.system == 'docker':
 			prefix = 'docker run --rm -it %s'%(img_path)
 		else:
