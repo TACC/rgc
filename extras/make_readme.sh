@@ -2,15 +2,15 @@
 
 OF=README.md
 
-usage=$(python bin/rgc -h 2>&1 | head -n 1)
+python rgc/__init__.py -h 2>&1 | head -n 4 | sed -e "s/__init__.py/rgc/" > usage.txt
 
-python bin/rgc -h 2>&1 | tail -n +3 | sed -e "/positional/i \ 
-${usage}
-" -e "/positional/i \ 
-\ 
-" | sed -e "/usage:/i \ 
+python rgc/__init__.py -h 2>&1 | tail -n +5 | sed -e "/positional/i \ 
+temp
+" | sed -e "/temp/r usage.txt" | sed -e "/temp/d" -e "/usage:/i \ 
 \`\`\`
 " > ${OF}
+
+rm usage.txt
 
 cat << 'EOF' >> ${OF}
 ```

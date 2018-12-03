@@ -6,7 +6,9 @@ Pulls containers from either:
 - docker hub
 - quay.io
 
-and generates Lmod modulefiles for us on HPC systems.
+and generates Lmod modulefiles for use on HPC systems.
+
+https://github.com/TACC/Lmod
 
 Requirements
 ------------------------------------------------------
@@ -24,8 +26,10 @@ Usage
 ------------------------------------------------------
 
 ```
-usage: rgc [-h] [-I PATH] [-M PATH] [-P STR] [-p INT] [-S] [-v] URL [URL ...]
- 
+usage: rgc [-h] [-I PATH] [-M PATH] [-r STR] [-P STR] [-p INT] [-S]
+                   [-v]
+                   URL [URL ...]
+
 positional arguments:
   URL                   Image urls to pull
 
@@ -36,6 +40,8 @@ optional arguments:
                         [./containers]
   -M PATH, --moddir PATH
                         Path to modulefiles [./modulefiles]
+  -r STR, --requires STR
+                        module prerequisites separated by ":" []
   -P STR, --prefix STR  Prefix string to image directory for when an
                         environment variable is used - not used by default
   -p INT, --percentile INT
