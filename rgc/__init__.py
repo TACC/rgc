@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/30/2018
+# Last Modified: 12/03/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -554,8 +554,8 @@ whatis("URL: %s")
 			logger.error("Unhandled system")
 			sys.exit(102)
 		for prog in progList:
-			bash_string = 'eval $(%s %s "$@")'%(prefix, prog)
-			csh_string = 'eval `%s %s "$*"`'%(prefix, prog)
+			bash_string = '%s %s $@'%(prefix, prog)
+			csh_string = '%s %s $*'%(prefix, prog)
 			func_string = 'set_shell_function("%s",\'%s\',\'%s\')\n'%(prog, bash_string, csh_string)
 			full_text += func_string
 		#####
