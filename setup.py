@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/29/2018
+# Last Modified: 12/11/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -52,7 +52,7 @@ setup(name = "rgc",
 	description="pulls and converts containers to LMOD modules",
 	tests_require = ['mock','pydoc-markdown'],
 	packages = ["rgc"],
-	scripts = ["bin/rgc"],
+	entry_points = {'console_scripts': ['rgc=rgc:main']},
 	test_suite="tests")
 	#package_data={'bioitools/test_data':['test.fa.fai']})
 	#install_requires = ['numpy'],

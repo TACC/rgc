@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 12/03/2018
+# Last Modified: 12/11/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -84,6 +84,8 @@ Usage
 		help='Path to modulefiles [%(default)s]', default='./modulefiles', type=str)
 	parser.add_argument('-r', '--requires', metavar='STR', \
 		help='module prerequisites separated by ":" [%(default)s]', default='', type=str)
+	parser.add_argument('-C', '--requires', metavar='STR', \
+		help='contact URL in modules [%(default)s]', default='https://github.com/zyndagj/rgc/issues', type=str)
 	parser.add_argument('-P', '--prefix', metavar='STR', \
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
@@ -262,6 +264,9 @@ class ContainerSystem:
 				threads.append(Thread(target=func, args=(url,)))
 				threads[-1].start()
 			for t in threads: t.join()
+			# Set homepage if to container url if it was not included in metadata
+			if not self.homepage[url]:
+				self.homepage[url] = self.full_url[url]
 		else:
 			logger.warning("Could not find %s. Excluding it future operations"%(url))
 	def getFullURL(self, url):
@@ -487,7 +492,7 @@ class ContainerSystem:
 		logger.info("Excluding programs in >= %.2f images"%(n_percentile))
 		self.blacklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
 		logger.debug("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
-	def genLMOD(self, url, pathPrefix):
+	def genLMOD(self, url, pathPrefix, contact_url):
 		'''
 		Generates an Lmod modulefile based on the cached container.
 
@@ -517,13 +522,13 @@ This container was pulled from:
 
 	%s
 
-If you encounter issues running this container, please
-submit a help ticket to the TACC life sciences department at
+If you encounter errors in %s or need help running the
+tools it contains, please contact the developer at
 
-	https://portal.tacc.utexas.edu/tacc-consulting
+	%s
 
-If you encounter errors in %s or need help running it,
-please contact the developer directly at
+For errors in the container or module file, please
+submit a ticket at
 
 	%s
 ]]'''
@@ -538,7 +543,7 @@ whatis("Description: %s")
 whatis("URL: %s")
 
 '''
-		full_text = help_text%(url, progStr, full_url, name, home)
+		full_text = help_text%(url, progStr, full_url, name, home, contact_url)
 		full_text += module_text%(name, tag, cats, keys, desc, full_url)
 		# add prereqs
 		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
