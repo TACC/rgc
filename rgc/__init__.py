@@ -41,7 +41,10 @@ logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
 from shutil import move
-from Queue import Queue
+try:
+	from Queue import Queue
+except:
+	from queue import Queue
 try: import urllib2
 except: import urllib.request as urllib2
 
@@ -317,7 +320,7 @@ class ContainerSystem:
 		'''
 		self.work = Queue()
 		# Spawn the workers
-		workers = [self._worker(i) for i in range(n_threads)]
+		workers = [Thread(target=self._worker, args=(i,)) for i in range(n_threads)]
 		# Start the workers
 		for worker in workers: worker.start()
 		# Add work to queue
@@ -335,7 +338,7 @@ class ContainerSystem:
 		# Parameters
 		worker_id (int): Unique integer id for worker
 		'''
-		for url in iter(wQ.get, 'STOP'):
+		for url in iter(self.work.get, 'STOP'):
 			logger.debug("Worker-%i: pulling %s"%(worker_id, url))
 			self.pull(url)
 			self.work.task_done()

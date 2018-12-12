@@ -42,10 +42,8 @@ try:
 except:
 	from io import StringIO
 # Import path to test the CLI
-try:
-	from unittest.mock import patch
-except:
-	from mock import patch
+#try: from unittest.mock import patch
+#except: from mock import patch
 # buffer for capturing log info
 logStream = StringIO()
 # Need to start logger BEFORE importing any pyPlateCalibrate code
@@ -101,15 +99,24 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(self.bad_dh_url in cSystem.invalid)
 		self.assertTrue(self.good_quay_url not in cSystem.invalid)
 		self.assertTrue(self.bad_quay_url in cSystem.invalid)
+	def testValidURLs(self):
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
+		cSystem.validateURLs(self.urls)
+		self.assertTrue(self.good_dh_url not in cSystem.invalid)
+		self.assertTrue(self.bad_dh_url in cSystem.invalid)
+		self.assertTrue(self.good_quay_url not in cSystem.invalid)
+		self.assertTrue(self.bad_quay_url in cSystem.invalid)
 	def testTags(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		self.assertTrue('1.2' in cSystem._getTags(self.good_dh_url))
 		self.assertTrue('1.0--hdd8ed8b_2' in cSystem._getTags(self.good_quay_url))
 		self.assertEqual(cSystem._getTags('biocontainers/samtoolz:1.3'), set([]))
 		self.assertEqual(cSystem._getTags('quay.io/biocontainers/samtoolz:1.3'), set([]))
-	def testPull(self):
+	def testPullAll(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		for url in self.urls: cSystem.pull(url)
+		cSystem.pullAll(self.urls, 4)
+		#output = logStream.getvalue()
+		#print(output)
 		self.assertTrue(self.good_dh_url in cSystem.images)
 		self.assertTrue(self.good_quay_url in cSystem.images)
 		self.assertTrue(self.good_dh_url not in cSystem.invalid)
@@ -118,9 +125,17 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(self.bad_quay_url not in cSystem.images)
 		self.assertTrue(self.bad_dh_url in cSystem.invalid)
 		self.assertTrue(self.bad_quay_url in cSystem.invalid)
+	def testPull(self):
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
+		cSystem.pull(self.good_quay_url)
+		self.assertTrue(self.good_quay_url in cSystem.images)
+		self.assertTrue(self.good_quay_url not in cSystem.invalid)
+		cSystem.pull(self.bad_dh_url)
+		self.assertTrue(self.bad_dh_url not in cSystem.images)
+		self.assertTrue(self.bad_dh_url in cSystem.invalid)
 	def testPullForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
-		for url in self.urls: cSystem.pull(url)
+		cSystem.pullAll(self.urls, 4)
 		for url in self.good_urls:
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			self.assertTrue(url in cSystem.full_url)
@@ -149,9 +164,9 @@ class TestRGC(unittest.TestCase):
 			cSystem._pullImage(url)
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 	def testDeleteImage(self):
-		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
+		cSystem.pullAll(self.good_urls, 4)
 		for url in self.good_urls:
-			cSystem._pullImage(url)
 			cSystem.deleteImage(url)
 			self.assertFalse(url in cSystem.images)
 	def testDeleteImageForce(self):
@@ -159,7 +174,8 @@ class TestRGC(unittest.TestCase):
 		for url in self.good_urls:
 			if url in cSystem.images:
 				self.assertFalse(os.path.exists(cSystem.images[url]))
-			cSystem._pullImage(url)
+		cSystem.pullAll(self.good_urls, 4)
+		for url in self.good_urls:
 			img_path = cSystem.images[url]
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			cSystem.deleteImage(url)
@@ -175,7 +191,7 @@ class TestRGC(unittest.TestCase):
 		self.assertEqual(cSystem.description[url], 'A software package with various utilities for processing alignments in the SAM format, including variant calling and alignment viewing.')
 	def testScan(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		for url in self.urls: cSystem.pull(url)
+		cSystem.pullAll(self.urls, 4)
 		cSystem.scanAll()
 		for url in self.good_urls:
 			self.assertTrue(url in cSystem.progs)
@@ -189,21 +205,21 @@ class TestRGC(unittest.TestCase):
 			self.assertEqual(cSystem.progs[self.good_dh_url], progs)
 	def testFindCommon(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		cSystem.pull(self.good_dh_url)
-		cSystem.pull('biocontainers/biocontainers:latest')
+		cSystem.pullAll([self.good_dh_url,'biocontainers/biocontainers:latest'], 2)
 		cSystem.scanAll()
 		cSystem.findCommon(p=60)
+		#output = logStream.getvalue()
+		#print(output)
 		self.assertTrue('samtools' in cSystem.getProgs(self.good_dh_url))
 		self.assertFalse('cp' in cSystem.getProgs(self.good_dh_url))
-		self.assertTrue('cp' in cSystem.getProgs(self.good_dh_url, blacklist=False))
+		self.assertTrue('cp' in cSystem.getProgs(self.good_dh_url, blocklist=False))
 	def testGenLMOD(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		url = self.good_dh_url
-		cSystem.pull(url)
-		cSystem.pull('biocontainers/biocontainers:latest')
+		cSystem.pullAll([url,'biocontainers/biocontainers:latest'], 2)
 		cSystem.scanAll()
 		cSystem.findCommon(p=60)
-		cSystem.genLMOD(url, './')
+		cSystem.genLMOD(url, './', 'user@email.com')
 		mFile = os.path.join(cSystem.moduleDir, cSystem.name_tag[url][0], cSystem.name_tag[url][1]+'.lua')
 		self.assertTrue(os.path.exists(mFile))
 		with open(mFile,'r') as MF:
