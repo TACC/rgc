@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 11/30/2018
+# Last Modified: 12/12/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -84,9 +84,9 @@ class TestRGC(unittest.TestCase):
 	#	self.assertEqual(cSystem.system, "docker")
 	def testGetRegistry(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		cSystem.getRegistry(self.good_dh_url)
+		cSystem._getRegistry(self.good_dh_url)
 		self.assertEqual(cSystem.registry[self.good_dh_url], 'dockerhub')
-		cSystem.getRegistry(self.good_quay_url)
+		cSystem._getRegistry(self.good_quay_url)
 		self.assertEqual(cSystem.registry[self.good_quay_url], 'quay')
 	def testValidReturn(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
@@ -103,10 +103,10 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(self.bad_quay_url in cSystem.invalid)
 	def testTags(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		self.assertTrue('1.2' in cSystem.getTags(self.good_dh_url))
-		self.assertTrue('1.0--hdd8ed8b_2' in cSystem.getTags(self.good_quay_url))
-		self.assertEqual(cSystem.getTags('biocontainers/samtoolz:1.3'), set([]))
-		self.assertEqual(cSystem.getTags('quay.io/biocontainers/samtoolz:1.3'), set([]))
+		self.assertTrue('1.2' in cSystem._getTags(self.good_dh_url))
+		self.assertTrue('1.0--hdd8ed8b_2' in cSystem._getTags(self.good_quay_url))
+		self.assertEqual(cSystem._getTags('biocontainers/samtoolz:1.3'), set([]))
+		self.assertEqual(cSystem._getTags('quay.io/biocontainers/samtoolz:1.3'), set([]))
 	def testPull(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		for url in self.urls: cSystem.pull(url)
@@ -132,26 +132,26 @@ class TestRGC(unittest.TestCase):
 	def testGetFull(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		for url in self.urls:
-			cSystem.getFullURL(url)
+			cSystem._getFullURL(url)
 		self.assertEqual(cSystem.full_url[self.good_quay_url],'https://quay.io/repository/biocontainers/samtools')
 		self.assertEqual(cSystem.full_url[self.bad_quay_url],'https://quay.io/repository/biocontainers/samtools')
 		self.assertEqual(cSystem.full_url[self.good_dh_url],'https://hub.docker.com/r/biocontainers/samtools')
 		self.assertEqual(cSystem.full_url[self.bad_dh_url],'https://hub.docker.com/r/biocontainers/samtools')
 	def testGetNameTag(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		cSystem.getNameTag(self.good_dh_url)
+		cSystem._getNameTag(self.good_dh_url)
 		self.assertEqual(cSystem.name_tag[self.good_dh_url], ('samtools', 'v1.7.0_cv2'))
-		cSystem.getNameTag('gzynda/singularity')
+		cSystem._getNameTag('gzynda/singularity')
 		self.assertEqual(cSystem.name_tag['gzynda/singularity'], ('singularity', 'latest'))
 	def testPullImageForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
 		for url in self.good_urls:
-			cSystem.pullImage(url)
+			cSystem._pullImage(url)
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 	def testDeleteImage(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
 		for url in self.good_urls:
-			cSystem.pullImage(url)
+			cSystem._pullImage(url)
 			cSystem.deleteImage(url)
 			self.assertFalse(url in cSystem.images)
 	def testDeleteImageForce(self):
@@ -159,7 +159,7 @@ class TestRGC(unittest.TestCase):
 		for url in self.good_urls:
 			if url in cSystem.images:
 				self.assertFalse(os.path.exists(cSystem.images[url]))
-			cSystem.pullImage(url)
+			cSystem._pullImage(url)
 			img_path = cSystem.images[url]
 			self.assertTrue(os.path.exists(cSystem.images[url]))
 			cSystem.deleteImage(url)
@@ -168,7 +168,7 @@ class TestRGC(unittest.TestCase):
 	def testMetadata(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		url = self.good_dh_url
-		cSystem.getMetadata(url)
+		cSystem._getMetadata(url)
 		#####################
 		self.assertEqual(set(cSystem.keywords[url]), set(['Mapping','Bioinformatics','Data architecture, analysis and design']))
 		self.assertEqual(set(cSystem.categories[url]), set(['Sequence assembly visualisation', 'Modelling and simulation','Formatting','Sequence alignment']))

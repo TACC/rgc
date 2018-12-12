@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 12/11/2018
+# Last Modified: 12/12/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 from collections import Counter
 from threading import Thread
 from shutil import move
+from Queue import Queue
 try: import urllib2
 except: import urllib.request as urllib2
 
@@ -83,9 +84,9 @@ Usage
 	parser.add_argument('-M', '--moddir', metavar='PATH', \
 		help='Path to modulefiles [%(default)s]', default='./modulefiles', type=str)
 	parser.add_argument('-r', '--requires', metavar='STR', \
-		help='module prerequisites separated by ":" [%(default)s]', default='', type=str)
-	parser.add_argument('-C', '--requires', metavar='STR', \
-		help='contact URL in modules [%(default)s]', default='https://github.com/zyndagj/rgc/issues', type=str)
+		help='Module prerequisites separated by "," [%(default)s]', default='', type=str)
+	parser.add_argument('-C', '--contact', metavar='STR', \
+		help='Contact URL(s) in modules separated by "," [%(default)s]', default='https://github.com/zyndagj/rgc/issues', type=str)
 	parser.add_argument('-P', '--prefix', metavar='STR', \
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
@@ -93,6 +94,8 @@ Usage
 		help='Remove packages that [%(default)s]', default='25', type=int)
 	parser.add_argument('-S', '--singularity', action='store_true', \
 		help='Images are cached as singularity containers - even when docker is present')
+	parser.add_argument('-t', '--threads', metavar='INT', \
+		help='Number of concurrent threads to use for pulling [%(default)s]', default='8', type=int)
 	parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
 	parser.add_argument('urls', metavar='URL', type=str, nargs='+', help='Image urls to pull')
 	args = parser.parse_args()
@@ -110,27 +113,34 @@ Usage
 	################################
 	cSystem = ContainerSystem(cDir=args.imgdir, mDir=args.moddir, \
 		forceImage=args.singularity, prereqs=args.requires)
+	logger.info("Finished initializing system")
 	################################
-	# Pull default images
+	# Define default URLs
 	################################
-	defaultURLS = ['ubuntu:xenial', 'centos:7', 'ubuntu:bionic', 'continuumio/miniconda:latest', 'biocontainers/biocontainers:latest']
-	logger.debug("Pulling default images for baseline PATHs")
-	for url in defaultURLS: cSystem.pull(url)
-	logger.debug("DONE pulling default images")
+	defaultURLS = ['ubuntu:xenial', 'centos:7', 'ubuntu:bionic', 'continuumio/miniconda:latest', 'biocontainers/biocontainers:latest','gzynda/singularity:2.6.0']
 	################################
-	# Pull and process specified images
+	# Validate all URLs
 	################################
-	logger.debug("Pulling specified images")
-	for url in args.urls: cSystem.pull(url)
-	logger.debug("Scanning pulled images")
+	cSystem.validateURLs(defaultURLS+args.urls)
+	logger.info("DONE validating URLs")
+	################################
+	# Pull all URLs
+	################################
+	logger.info("Using %i threads to pull all urls"%(args.threads))
+	cSystem.pullAll(defaultURLS+args.urls, args.threads)
+	logger.debug("DONE pulling all urls")
+	################################
+	# Process all images
+	################################
+	logger.debug("Scanning all images")
 	cSystem.scanAll()
-	logger.debug("Blacklisting programs in at least %i%% of images"%(args.percentile))
 	cSystem.findCommon(p=args.percentile)
+	logger.debug("DONE scanning images")
 	################################
 	# Generate module files
 	################################
-	logger.debug("Creating Lmod files")
-	for url in args.urls: cSystem.genLMOD(url, args.prefix)
+	logger.INFO("Creating Lmod files for specified images")
+	for url in args.urls: cSystem.genLMOD(url, args.prefix, args.contact)
 	logger.info("Finished creating Lmod files for all %i containers"%(len(args.urls)))
 	################################
 	# Delete default images
@@ -147,21 +157,43 @@ class ContainerSystem:
 	mDir (str): Path to output module directory
 	forceImage (bool): Option to force the creation of singularity images
 	prereqs (str): string of prerequisite modules separated by ":"
+	
+	# Attributes
+	system (str): Container system
+	containerDir (str): Path to use for containers
+	moduleDir (str): Path to use for module files
+	forceImage (bool): Force singularity image creation
+	invalid (set): Set of invalid urls
+	valid (set): Set of valid urls
+	images (dict): Path of singularity image or docker url after pulling
+	registry (dict): Registry of origin
+	progs (dict): Set of programs in a container
+	name_tag (dict): (name, tag) tuple of a URL
+	keywords (dict): List of keywords for a container
+	categories (dict): List of categories for a container
+	homepage (dict): Original homepage of software in container
+	description (dict): Description of software in container
+	full_url (dict): Full URL to container in registry
+	blocklist (set): Set of programs to be blocked from being output
+	prog_count (Counter): Occurance count of each program seen
+	lmod_prereqs (list): List of prerequisite modules
 	'''
 	def __init__(self, cDir='./containers', mDir='./modulefiles', forceImage=False, prereqs=''):
 		'''
 		ContainerSystem initializer
 		'''
-		self.system = self.detectSystem()
+		self.system = self._detectSystem()
 		self.containerDir = cDir
 		self.moduleDir = mDir
 		self.forceImage = forceImage
 		if self.system == 'singularity' or forceImage:
 			logger.debug("Creating %s for caching images"%(cDir))
 			if not os.path.exists(cDir): os.makedirs(cDir)
-		logger.debug("Creating %s for modulefiles"%(mDir))
-		if not os.path.exists(mDir): os.makedirs(mDir)
+		if not os.path.exists(mDir):
+			logger.debug("Creating %s for modulefiles"%(mDir))
+			os.makedirs(mDir)
 		self.invalid = set([])
+		self.valid = set([])
 		self.images = {}
 		self.registry = {}
 		self.progs = {}
@@ -171,12 +203,18 @@ class ContainerSystem:
 		self.homepage = {}
 		self.description = {}
 		self.full_url = {}
-		self.blacklist = set([])
+		self.blocklist = set([])
 		self.prog_count = Counter()
 		self.lmod_prereqs = prereqs.split(':')
-	def detectSystem(self):
+	def _detectSystem(self):
 		'''
-		Detects the container system type {docker, singularity}
+		Looks for
+
+		 1. docker
+		 2. singularity
+
+		container systems installed and running on
+		the host.
 
 		# Raises
 		101: if neither docker or singularity is found
@@ -193,7 +231,7 @@ class ContainerSystem:
 		else:
 			logger.error("Neither docker nor singularity detected on system")
 			sys.exit(101)
-	def getRegistry(self, url):
+	def _getRegistry(self, url):
 		'''
 		Sets self.registry[url] with the registry that tracks the URL
 
@@ -205,7 +243,7 @@ class ContainerSystem:
 			self.registry[url] = 'quay'
 	def validateURL(self, url):
 		'''
-		Addes url to the self.invalid set and returns False when a URL is invalid
+		Adds url to the self.invalid set and returns False when a URL is invalid
 		
 		# Parameters
 		url (str): Image url used to pull
@@ -214,11 +252,28 @@ class ContainerSystem:
 		bool: 	url is valid
 		'''
 		tag = url.split(':')[1]
-		if tag not in self.getTags(url):
+		if tag not in self._getTags(url):
 			self.invalid.add(url)
+			logger.warning("%s is an invalid URL"%(url))
 			return False
+		logger.debug("%s is valid"%(url))
+		self.valid.add(url)
 		return True
-	def getTags(self, url):
+	def validateURLs(self, url_list):
+		'''
+		Adds url to the self.invalid set and returns False when a URL is invalid
+		
+		# Parameters
+		url_list (list): List of URLs to validate
+
+		# Returns
+		list: 	list of valid urls
+		'''
+		threads = [Thread(target=self.validateURL, args=(url,)) for url in url_list]
+		for t in threads: t.start()
+		for t in threads: t.join()
+		return list(self.valid)
+	def _getTags(self, url):
 		'''
 		Returns all tags for the image specified with URL
 		
@@ -230,7 +285,7 @@ class ContainerSystem:
 		'''
 		name = url.split(':')[0]
 		if '/' not in name: name = 'library/'+name
-		if url not in self.registry: self.getRegistry(url)
+		if url not in self.registry: self._getRegistry(url)
 		if self.registry[url] == 'quay':
 			name = '/'.join(name.split('/')[1:])
 			query = 'https://quay.io/api/v1/repository/%s/tag'%(name)
@@ -246,6 +301,45 @@ class ContainerSystem:
 				results += resp[key]
 		except urllib2.HTTPError: return set([])
 		return set([t['name'] for t in results])
+	def pullAll(self, url_list, n_threads):
+		'''
+		Uses worker threads to concurrently pull
+
+		 - image
+		 - metadata
+		 - repository info
+
+		for a list of urls.
+
+		# Parameters
+		url_list (list): List of urls to pul
+		n_threads (int): Number of worker threads to use
+		'''
+		self.work = Queue()
+		# Spawn the workers
+		workers = [self._worker(i) for i in range(n_threads)]
+		# Start the workers
+		for worker in workers: worker.start()
+		# Add work to queue
+		for url in url_list:
+			self.work.put(url)
+		# Stop the workers
+		for worker in workers: self.work.put('STOP')
+		# Join the threads
+		for worker in workers: worker.join()
+		logger.info("Finished pulling all %i containers"%(len(url_list)))
+	def _worker(self, worker_id):
+		'''
+		Worker for pulling images
+
+		# Parameters
+		worker_id (int): Unique integer id for worker
+		'''
+		for url in iter(wQ.get, 'STOP'):
+			logger.debug("Worker-%i: pulling %s"%(worker_id, url))
+			self.pull(url)
+			self.work.task_done()
+		self.work.task_done()
 	def pull(self, url):
 		'''
 		Uses threads to concurrently pull:
@@ -258,9 +352,11 @@ class ContainerSystem:
 		url (str): Image url used to pull
 		'''
 		threads = []
-		if self.validateURL(url):
-			self.getNameTag(url)
-			for func in (self.pullImage, self.getMetadata, self.getFullURL):
+		if url in self.invalid: return
+		if url not in self.valid: ret = self.validateURL(url)
+		if url in self.valid:
+			self._getNameTag(url)
+			for func in (self._pullImage, self._getMetadata, self._getFullURL):
 				threads.append(Thread(target=func, args=(url,)))
 				threads[-1].start()
 			for t in threads: t.join()
@@ -269,7 +365,7 @@ class ContainerSystem:
 				self.homepage[url] = self.full_url[url]
 		else:
 			logger.warning("Could not find %s. Excluding it future operations"%(url))
-	def getFullURL(self, url):
+	def _getFullURL(self, url):
 		'''
 		Stores the web URL for viewing the specified image in `self.full_url[url]`
 
@@ -285,9 +381,7 @@ class ContainerSystem:
 		else:
 			base = 'https://hub.docker.com/r/%s'
 		self.full_url[url] = base%(name)
-		#ret = urllib2.urlopen(self.full_url[url]).getcode()
-		#assert(ret == 200)
-	def getNameTag(self, url):
+	def _getNameTag(self, url):
 		'''
 		Stores the container (name, tag) from a url in `self.name_tag[url]`
 
@@ -301,20 +395,24 @@ class ContainerSystem:
 		else:
 			tool_name = url.split('/')[-1]
 		self.name_tag[url] = (tool_name, tool_tag)
-	def pullImage(self, url):
+	def _pullImage(self, url):
 		'''
 		Pulls an image using either docker or singularity and
 		sets
 
 		 - `self.images[url]`
 
-		as the URL or path for subsequent interactions.
+		as the URL or path for subsequent interactions. Please
+		use pull over pullImage.
 
 		> NOTE - this image must be valid
 
 		# Parameters
 		url (str): Image url used to pull
 		'''
+		if url in self.invalid:
+			logger.error("This url is not valid")
+			sys.exit(103)
 		if self.system == 'docker':
 			if self.forceImage:
 				absPath = os.path.join(os.getcwd(), self.containerDir)
@@ -335,13 +433,17 @@ class ContainerSystem:
 			if os.path.exists(newName):
 				logger.debug("Using previously pulled version of %s"%(url))
 			else:
-				cmd = 'singularity pull -F docker://%s 2>/dev/null'%(url)
+				tmp_dir = sp.check_output('mktemp -d -p /tmp', shell=True)
+				logger.debug("Using %s as cachedir"%(tmp_dir))
+				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s 2>/dev/null'%(tmp_dir, url)
 				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
 				output = [x for x in output if '.simg' in x]
 				imgFile = output[-1].split(' ')[-1]
 				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
 				if not os.path.exists(newName):
 					move(imgFile, newName)
+				sp.check_call('rm -rf %s'%(tmp_dir), shell=True)
+				logger.debug("Deleted %s"%(tmp_dir))
 			self.images[url] = newName
 		else:
 			logger.error("Unhandled system")
@@ -363,7 +465,7 @@ class ContainerSystem:
 			os.remove(self.images[url])
 		del self.images[url]
 		logger.info("Deleted %s"%(url))
-	def getMetadata(self, url):
+	def _getMetadata(self, url):
 		'''
 		Assuming the image is a biocontainer,
 
@@ -376,7 +478,7 @@ class ContainerSystem:
 		# Parameters
 		url (str): Image url used to pull
 		'''
-		if url not in self.name_tag: self.getNameTag(url)
+		if url not in self.name_tag: self._getNameTag(url)
 		name = self.name_tag[url][0]
 		md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
 		self.homepage[url] = False
@@ -438,13 +540,13 @@ class ContainerSystem:
 				sys.exit(102)
 			self.prog_count += Counter(progList)
 			self.progs[url] = set(progList)
-	def getProgs(self, url, blacklist=True):
+	def getProgs(self, url, blocklist=True):
 		'''
-		Retruns a list of all programs on the path of a url that are not blacklisted
+		Retruns a list of all programs on the path of a url that are not blocked
 
 		# Parameters
 		url (str): Image url used to pull
-		blacklist (bool): Filter out blacklisted programs
+		blocklist (bool): Filter out blocked programs
 
 		# Returns
 		list: programs on PATH in container
@@ -453,8 +555,8 @@ class ContainerSystem:
 		if url not in self.progs:
 			logger.debug("Programs have not yet been cached for %s"%(url))
 			self.cacheProgs(self, url)
-		if blacklist:
-			return list(self.progs[url]-self.blacklist)
+		if blocklist:
+			return list(self.progs[url]-self.blocklist)
 		return list(self.progs[url])
 	def getAllProgs(self, url):
 		'''
@@ -465,7 +567,7 @@ class ContainerSystem:
 		# Parameters
 		url (str): Image url used to pull
 		'''
-		return self.getProgs(url, blacklist=False)
+		return self.getProgs(url, blocklist=False)
 	def _diffProgs(self, fromURL, newURL):
 		'''
 		Creates a list of programs on the path of newURL that do not exist in fromURL
@@ -478,9 +580,9 @@ class ContainerSystem:
 		return list(self.progs[newURL].difference(self.progs[fromURL]))
 	def findCommon(self, p=25):
 		'''
-		Creates a blacklist containing all programs that are in at least p% of the images
+		Creates a blocklist containing all programs that are in at least p% of the images
 
-		 - `self.blacklist[url] = set([prog, prog, ...])`
+		 - `self.blocklist[url] = set([prog, prog, ...])`
 
 		# Parameters
 		p (int): Percentile of images
@@ -490,8 +592,9 @@ class ContainerSystem:
 		logger.info("Cached %i images and %i unique programs"%(n_images,len(self.prog_count)))
 		logger.info("Excluding programs in >= %i%% of images"%(p))
 		logger.info("Excluding programs in >= %.2f images"%(n_percentile))
-		self.blacklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
-		logger.debug("Excluding:\n - "+'\n - '.join(sorted(list(self.blacklist))))
+		self.blocklist = set([prog for prog, count in self.prog_count.items() if count >= n_percentile])
+		logger.info("Excluded %i of %i programs"%(len(self.blocklist), len(self.prog_count)))
+		logger.debug("Excluding:\n - "+'\n - '.join(sorted(list(self.blocklist))))
 	def genLMOD(self, url, pathPrefix, contact_url):
 		'''
 		Generates an Lmod modulefile based on the cached container.
@@ -511,6 +614,7 @@ class ContainerSystem:
 		progStr = ' - '+'\n - '.join(progList)
 		img_path = self.images[url]
 		home = self.homepage[url]
+		contact_joined = '\n\t'.join(contact_url.split(','))
 		#####
 		help_text = '''local help_message = [[
 This is a module file for the container %s, which exposes the
@@ -543,7 +647,7 @@ whatis("Description: %s")
 whatis("URL: %s")
 
 '''
-		full_text = help_text%(url, progStr, full_url, name, home, contact_url)
+		full_text = help_text%(url, progStr, full_url, name, home, contact_joined)
 		full_text += module_text%(name, tag, cats, keys, desc, full_url)
 		# add prereqs
 		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
