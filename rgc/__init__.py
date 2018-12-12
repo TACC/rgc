@@ -419,7 +419,7 @@ class ContainerSystem:
 		if self.system == 'docker':
 			if self.forceImage:
 				absPath = os.path.join(os.getcwd(), self.containerDir)
-				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s'"%(absPath, url)
+				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s 2>/dev/null'"%(absPath, url)
 				logger.debug(cmd)
 				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
 				output = [x for x in output if '.simg' in x]
