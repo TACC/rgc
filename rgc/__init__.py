@@ -423,7 +423,7 @@ class ContainerSystem:
 					logger.debug("Using previously pulled version of %s"%(url))
 				else:
 					absPath = os.path.join(os.getcwd(), self.containerDir)
-					cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s' &>/dev/null"%(absPath, url)
+					cmd = "docker run -v %s:/containers --rm gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s' &>/dev/null"%(absPath, url)
 					logger.debug("Running: "+cmd)
 					sp.check_call(cmd, shell=True)
 					assert(os.path.exists(simg_path))
@@ -441,9 +441,8 @@ class ContainerSystem:
 				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
 				output = [x for x in output if '.simg' in x]
 				imgFile = output[-1].split(' ')[-1]
-				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
-				if not os.path.exists(newName):
-					move(imgFile, newName)
+				if not os.path.exists(simg_path):
+					move(imgFile, simg_path)
 				sp.check_call('rm -rf %s'%(tmp_dir), shell=True)
 				logger.debug("Deleted %s"%(tmp_dir))
 			self.images[url] = newName
