@@ -94,7 +94,7 @@ Usage
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
 	parser.add_argument('-p', '--percentile', metavar='INT', \
-		help='Remove packages that [%(default)s]', default='25', type=int)
+		help='Exclude programs in >= p%% of images [%(default)s]', default='25', type=int)
 	parser.add_argument('-S', '--singularity', action='store_true', \
 		help='Images are cached as singularity containers - even when docker is present')
 	parser.add_argument('-t', '--threads', metavar='INT', \
