@@ -142,7 +142,7 @@ Usage
 	################################
 	# Generate module files
 	################################
-	logger.INFO("Creating Lmod files for specified images")
+	logger.info("Creating Lmod files for specified images")
 	for url in args.urls: cSystem.genLMOD(url, args.prefix, args.contact)
 	logger.info("Finished creating Lmod files for all %i containers"%(len(args.urls)))
 	################################
@@ -435,9 +435,10 @@ class ContainerSystem:
 			if os.path.exists(simg_path):
 				logger.debug("Using previously pulled version of %s"%(url))
 			else:
-				tmp_dir = sp.check_output('mktemp -d -p /tmp', shell=True)
+				tmp_dir = sp.check_output('mktemp -d -p /tmp', shell=True).rstrip('\n')
 				logger.debug("Using %s as cachedir"%(tmp_dir))
 				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s 2>/dev/null'%(tmp_dir, url)
+				logger.debug("Running: "+cmd)
 				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
 				output = [x for x in output if '.simg' in x]
 				imgFile = output[-1].split(' ')[-1]
@@ -614,7 +615,7 @@ class ContainerSystem:
 		cats = self.categories[url]
 		progList = sorted(self.getProgs(url))
 		progStr = ' - '+'\n - '.join(progList)
-		img_path = self.images[url]
+		img_path = self.images[url].lstrip('./')
 		home = self.homepage[url]
 		contact_joined = '\n\t'.join(contact_url.split(','))
 		#####
