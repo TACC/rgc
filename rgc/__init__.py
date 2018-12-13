@@ -208,7 +208,7 @@ class ContainerSystem:
 		self.full_url = {}
 		self.blocklist = set([])
 		self.prog_count = Counter()
-		self.lmod_prereqs = prereqs.split(':')
+		self.lmod_prereqs = prereqs.split(',')
 	def _detectSystem(self):
 		'''
 		Looks for

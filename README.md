@@ -26,8 +26,8 @@ Usage
 ------------------------------------------------------
 
 ```
-usage: rgc [-h] [-I PATH] [-M PATH] [-r STR] [-P STR] [-p INT] [-S]
-                   [-v]
+usage: rgc [-h] [-I PATH] [-M PATH] [-r STR] [-C STR] [-P STR]
+                   [-p INT] [-S] [-t INT] [-v]
                    URL [URL ...]
 
 positional arguments:
@@ -41,13 +41,18 @@ optional arguments:
   -M PATH, --moddir PATH
                         Path to modulefiles [./modulefiles]
   -r STR, --requires STR
-                        module prerequisites separated by ":" []
+                        Module prerequisites separated by "," []
+  -C STR, --contact STR
+                        Contact URL(s) in modules separated by ","
+                        [https://github.com/zyndagj/rgc/issues]
   -P STR, --prefix STR  Prefix string to image directory for when an
                         environment variable is used - not used by default
   -p INT, --percentile INT
                         Remove packages that [25]
   -S, --singularity     Images are cached as singularity containers - even
                         when docker is present
+  -t INT, --threads INT
+                        Number of concurrent threads to use for pulling [8]
   -v, --verbose         Enable verbose logging
 ```
 
@@ -88,61 +93,71 @@ __Parameters__
 - __forceImage (bool)__: Option to force the creation of singularity images
 - __prereqs (str)__: string of prerequisite modules separated by ":"
 
-#### detectSystem
-```python
-ContainerSystem.detectSystem(self)
-```
+__Attributes__
 
-Detects the container system type {docker, singularity}
-
-__Raises__
-
-- `101`: if neither docker or singularity is found
-
-__Returns__
-
-`str`: conainter system
-
-#### getRegistry
-```python
-ContainerSystem.getRegistry(self, url)
-```
-
-Sets self.registry[url] with the registry that tracks the URL
-
-__Parameters__
-
-- __url (str)__: Image url used to pull
+- `system (str)`: Container system
+- `containerDir (str)`: Path to use for containers
+- `moduleDir (str)`: Path to use for module files
+- `forceImage (bool)`: Force singularity image creation
+- `invalid (set)`: Set of invalid urls
+- `valid (set)`: Set of valid urls
+- `images (dict)`: Path of singularity image or docker url after pulling
+- `registry (dict)`: Registry of origin
+- `progs (dict)`: Set of programs in a container
+- `name_tag (dict)`: (name, tag) tuple of a URL
+- `keywords (dict)`: List of keywords for a container
+- `categories (dict)`: List of categories for a container
+- `homepage (dict)`: Original homepage of software in container
+- `description (dict)`: Description of software in container
+- `full_url (dict)`: Full URL to container in registry
+- `blocklist (set)`: Set of programs to be blocked from being output
+- `prog_count (Counter)`: Occurance count of each program seen
+- `lmod_prereqs (list)`: List of prerequisite modules
 
 #### validateURL
 ```python
 ContainerSystem.validateURL(self, url)
 ```
 
-Addes url to the self.invalid set and returns False when a URL is invalid
+Adds url to the self.invalid set when a URL is invalid and
+self.valid when a URL work.
 
 __Parameters__
 
 - __url (str)__: Image url used to pull
 
-__Returns__
-
-`bool`: 	url is valid
-
-#### getTags
+#### validateURLs
 ```python
-ContainerSystem.getTags(self, url)
+ContainerSystem.validateURLs(self, url_list)
 ```
 
-Returns all tags for the image specified with URL
+Adds url to the self.invalid set and returns False when a URL is invalid
 
 __Parameters__
 
-- __url (str)__: Image url used to pull
+- __url_list (list)__: List of URLs to validate
 
 __Returns__
 
-`set`: all tags associated with main image URL
+`list`: 	list of valid urls
+
+#### pullAll
+```python
+ContainerSystem.pullAll(self, url_list, n_threads)
+```
+
+Uses worker threads to concurrently pull
+
+ - image
+ - metadata
+ - repository info
+
+for a list of urls.
+
+__Parameters__
+
+- __url_list (list)__: List of urls to pul
+- __n_threads (int)__: Number of worker threads to use
 
 #### pull
 ```python
@@ -159,71 +174,12 @@ __Parameters__
 
 - __url (str)__: Image url used to pull
 
-#### getFullURL
-```python
-ContainerSystem.getFullURL(self, url)
-```
-
-Stores the web URL for viewing the specified image in `self.full_url[url]`
-
-> NOTE: This does not validate the url
-
-__Parameters__
-
-- __url (str)__: Image url used to pull
-
-#### getNameTag
-```python
-ContainerSystem.getNameTag(self, url)
-```
-
-Stores the container (name, tag) from a url in `self.name_tag[url]`
-
-__Parameters__
-
-- __url (str)__: Image url used to pull
-
-#### pullImage
-```python
-ContainerSystem.pullImage(self, url)
-```
-
-Pulls an image using either docker or singularity and
-sets
-
- - `self.images[url]`
-
-as the URL or path for subsequent interactions.
-
-> NOTE - this image must be valid
-
-__Parameters__
-
-- __url (str)__: Image url used to pull
-
 #### deleteImage
 ```python
 ContainerSystem.deleteImage(self, url)
 ```
 
 Deletes a cached image
-
-__Parameters__
-
-- __url (str)__: Image url used to pull
-
-#### getMetadata
-```python
-ContainerSystem.getMetadata(self, url)
-```
-
-Assuming the image is a biocontainer,
-
- - `self.categories[url]`
- - `self.keywords[url]`
- - `self.description[url]`
-
-are set after querying https://dev.bio.tools
 
 __Parameters__
 
@@ -255,15 +211,15 @@ __Parameters__
 
 #### getProgs
 ```python
-ContainerSystem.getProgs(self, url, blacklist=True)
+ContainerSystem.getProgs(self, url, blocklist=True)
 ```
 
-Retruns a list of all programs on the path of a url that are not blacklisted
+Retruns a list of all programs on the path of a url that are not blocked
 
 __Parameters__
 
 - __url (str)__: Image url used to pull
-- __blacklist (bool)__: Filter out blacklisted programs
+- __blocklist (bool)__: Filter out blocked programs
 
 __Returns__
 
@@ -287,9 +243,9 @@ __Parameters__
 ContainerSystem.findCommon(self, p=25)
 ```
 
-Creates a blacklist containing all programs that are in at least p% of the images
+Creates a blocklist containing all programs that are in at least p% of the images
 
- - `self.blacklist[url] = set([prog, prog, ...])`
+ - `self.blocklist[url] = set([prog, prog, ...])`
 
 __Parameters__
 
@@ -297,7 +253,7 @@ __Parameters__
 
 #### genLMOD
 ```python
-ContainerSystem.genLMOD(self, url, pathPrefix)
+ContainerSystem.genLMOD(self, url, pathPrefix, contact_url)
 ```
 
 Generates an Lmod modulefile based on the cached container.
