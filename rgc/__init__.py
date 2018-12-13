@@ -445,7 +445,7 @@ class ContainerSystem:
 					move(imgFile, simg_path)
 				sp.check_call('rm -rf %s'%(tmp_dir), shell=True)
 				logger.debug("Deleted %s"%(tmp_dir))
-			self.images[url] = newName
+			self.images[url] = simg_path
 		else:
 			logger.error("Unhandled system")
 			sys.exit(102)
