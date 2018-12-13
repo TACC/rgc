@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 12/12/2018
+# Last Modified: 12/13/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -77,21 +77,12 @@ class TestRGC(unittest.TestCase):
 		# Clean output directory
 		if os.path.exists(outDir): rmtree(outDir)
 		## Runs after every test function ##
-	#def testDetectSystem(self):
-	#	cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-	#	self.assertEqual(cSystem.system, "docker")
 	def testGetRegistry(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		cSystem._getRegistry(self.good_dh_url)
 		self.assertEqual(cSystem.registry[self.good_dh_url], 'dockerhub')
 		cSystem._getRegistry(self.good_quay_url)
 		self.assertEqual(cSystem.registry[self.good_quay_url], 'quay')
-	def testValidReturn(self):
-		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		self.assertTrue(cSystem.validateURL(self.good_dh_url))
-		self.assertTrue(cSystem.validateURL(self.good_quay_url))
-		self.assertFalse(cSystem.validateURL(self.bad_dh_url))
-		self.assertFalse(cSystem.validateURL(self.bad_quay_url))
 	def testValidSet(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		for url in self.urls: cSystem.validateURL(url)
@@ -127,14 +118,14 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(self.bad_quay_url in cSystem.invalid)
 	def testPull(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
-		cSystem.pull(self.good_quay_url)
+		cSystem.pullAll([self.good_quay_url, self.bad_dh_url], 2)
 		self.assertTrue(self.good_quay_url in cSystem.images)
 		self.assertTrue(self.good_quay_url not in cSystem.invalid)
-		cSystem.pull(self.bad_dh_url)
 		self.assertTrue(self.bad_dh_url not in cSystem.images)
 		self.assertTrue(self.bad_dh_url in cSystem.invalid)
 	def testPullForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
+		cSystem.validateURLs(self.urls)
 		cSystem.pullAll(self.urls, 4)
 		for url in self.good_urls:
 			self.assertTrue(os.path.exists(cSystem.images[url]))
@@ -160,9 +151,9 @@ class TestRGC(unittest.TestCase):
 		self.assertEqual(cSystem.name_tag['gzynda/singularity'], ('singularity', 'latest'))
 	def testPullImageForce(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=True)
-		for url in self.good_urls:
-			cSystem._pullImage(url)
-			self.assertTrue(os.path.exists(cSystem.images[url]))
+		url = self.good_quay_url
+		cSystem._pullImage(url)
+		self.assertTrue(os.path.exists(cSystem.images[url]))
 	def testDeleteImage(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		cSystem.pullAll(self.good_urls, 4)
@@ -174,13 +165,13 @@ class TestRGC(unittest.TestCase):
 		for url in self.good_urls:
 			if url in cSystem.images:
 				self.assertFalse(os.path.exists(cSystem.images[url]))
-		cSystem.pullAll(self.good_urls, 4)
-		for url in self.good_urls:
-			img_path = cSystem.images[url]
-			self.assertTrue(os.path.exists(cSystem.images[url]))
-			cSystem.deleteImage(url)
-			self.assertFalse(os.path.exists(img_path))
-			self.assertFalse(url in cSystem.images)
+		url = self.good_dh_url
+		cSystem.pull(url)
+		img_path = cSystem.images[url]
+		self.assertTrue(os.path.exists(cSystem.images[url]))
+		cSystem.deleteImage(url)
+		self.assertFalse(os.path.exists(img_path))
+		self.assertFalse(url in cSystem.images)
 	def testMetadata(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		url = self.good_dh_url

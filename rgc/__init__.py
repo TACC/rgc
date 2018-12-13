@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 12/12/2018
+# Last Modified: 12/13/2018
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -246,22 +246,19 @@ class ContainerSystem:
 			self.registry[url] = 'quay'
 	def validateURL(self, url):
 		'''
-		Adds url to the self.invalid set and returns False when a URL is invalid
+		Adds url to the self.invalid set when a URL is invalid and
+		self.valid when a URL work.
 		
 		# Parameters
 		url (str): Image url used to pull
-		
-		# Returns
-		bool: 	url is valid
 		'''
 		tag = url.split(':')[1]
 		if tag not in self._getTags(url):
 			self.invalid.add(url)
 			logger.warning("%s is an invalid URL"%(url))
-			return False
-		logger.debug("%s is valid"%(url))
-		self.valid.add(url)
-		return True
+		else:
+			logger.debug("%s is valid"%(url))
+			self.valid.add(url)
 	def validateURLs(self, url_list):
 		'''
 		Adds url to the self.invalid set and returns False when a URL is invalid
@@ -414,26 +411,28 @@ class ContainerSystem:
 		url (str): Image url used to pull
 		'''
 		if url in self.invalid:
-			logger.error("This url is not valid")
+			logger.error("%s is not a valid URL")
 			sys.exit(103)
+		if url not in self.name_tag: self._getNameTag(url)
+		name, tag = self.name_tag[url]
+		simg = '%s-%s.simg'%(name, tag)
+		simg_path = os.path.join(self.containerDir, simg)
 		if self.system == 'docker':
 			if self.forceImage:
-				absPath = os.path.join(os.getcwd(), self.containerDir)
-				cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s 2>/dev/null'"%(absPath, url)
-				logger.debug(cmd)
-				output = sp.check_output(cmd, shell=True).decode('utf-8').replace('\r','').split('\n')
-				output = [x for x in output if '.simg' in x]
-				imgFile = output[-1].split(' ')[-1]
-				newName = os.path.join(self.containerDir, os.path.basename(imgFile))
-				assert(os.path.exists(newName))
-				self.images[url] = newName
+				if os.path.exists(simg_path):
+					logger.debug("Using previously pulled version of %s"%(url))
+				else:
+					absPath = os.path.join(os.getcwd(), self.containerDir)
+					cmd = "docker run -v %s:/containers --rm -it gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s' &>/dev/null"%(absPath, url)
+					logger.debug("Running: "+cmd)
+					sp.check_call(cmd, shell=True)
+					assert(os.path.exists(simg_path))
+					self.images[url] = simg_path
 			else:
-				sp.check_call('docker pull %s 1>/dev/null'%(url), shell=True)
+				sp.check_call('docker pull %s &>/dev/null'%(url), shell=True)
 				self.images[url] = url
 		elif self.system == 'singularity':
-			name, tag = self.name_tag[url]
-			newName = os.path.join(self.containerDir, '%s-%s.simg'%(name, tag))
-			if os.path.exists(newName):
+			if os.path.exists(simg_path):
 				logger.debug("Using previously pulled version of %s"%(url))
 			else:
 				tmp_dir = sp.check_output('mktemp -d -p /tmp', shell=True)
@@ -463,7 +462,7 @@ class ContainerSystem:
 			if self.forceImage:
 				os.remove(self.images[url])
 			else:
-				sp.check_call('docker rmi %s 1>/dev/null'%(url), shell=True)
+				sp.check_call('docker rmi %s &>/dev/null'%(url), shell=True)
 		elif self.system == 'singularity':
 			os.remove(self.images[url])
 		del self.images[url]
@@ -495,6 +494,7 @@ class ContainerSystem:
 			desc = resp_json['description']
 			if 'homepage' in resp_json: self.homepage[url] = resp_json['homepage']
 		except urllib2.HTTPError:
+			logger.debug("No record of %s on dev.bio.tools"%(name))
 			functions = ["Bioinformatics"]
 			topics = ["Biocontainer"]
 			desc = "The %s package"%(name)
