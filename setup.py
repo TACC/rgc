@@ -45,14 +45,14 @@ except:
 	from distutils.core import setup, Extension
 
 setup(name = "rgc",
-	version = "0.1.0",
+	version = "0.1.1",
 	author = "Greg Zynda",
 	author_email="gzynda@tacc.utexas.edu",
 	license="BSD-3",
 	description="pulls and converts containers to LMOD modules",
-	tests_require = ['mock','pydoc-markdown'],
+	tests_require = ['mock','pydoc-markdown','tqdm'],
+	install_requires = ['tqdm'],
 	packages = ["rgc"],
 	entry_points = {'console_scripts': ['rgc=rgc:main']},
 	test_suite="tests")
 	#package_data={'bioitools/test_data':['test.fa.fai']})
-	#install_requires = ['numpy'],
