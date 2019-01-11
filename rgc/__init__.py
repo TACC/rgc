@@ -629,7 +629,7 @@ class ContainerSystem:
 				self.homepage[url] = resp_json['homepage_url'].encode('ascii','ignore')
 				topics = ["Biocontainer"]
 				functions = ["Bioinformatics"]
-			except urllib2.HTTPError:
+			except:
 				# Default values
 				self.logger.debug("No record of %s on dev.bio.tools"%(name))
 				functions = ["Bioinformatics"]
