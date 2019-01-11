@@ -54,64 +54,36 @@ except: import pickle
 FORMAT = "[%(levelname)s - %(funcName)s] %(message)s"
 
 def main():
-	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description='''\
-rgc - Rolling Gantry Crane
-======================================================
-
-Pulls containers from either:
-
-- docker hub
-- quay.io
-
-and generates Lmod modulefiles for use on HPC systems.
-
-https://github.com/TACC/Lmod
-
-Requirements
-------------------------------------------------------
-
-- docker or singularity
-- python 2 or 3
-
-Platorms
-------------------------------------------------------
-
-- Linux
-- MacOS
-
-Usage
-------------------------------------------------------
-
-''')
+	parser = argparse.ArgumentParser(description='rgc - Pulls containers and generates Lmod modulefiles for use on HPC systems')
 	parser.add_argument('-I', '--imgdir', metavar='PATH', \
 		help='Directory used to cache singularity images [%(default)s]', \
 		default='./containers', type=str)
 	parser.add_argument('-M', '--moddir', metavar='PATH', \
 		help='Path to modulefiles [%(default)s]', default='./modulefiles', type=str)
-	parser.add_argument('-r', '--requires', metavar='STR', \
-		help='Module prerequisites separated by "," [%(default)s]', default='', type=str)
 	parser.add_argument('-C', '--contact', metavar='STR', \
 		help='Contact URL(s) in modules separated by "," [%(default)s]', default='https://github.com/zyndagj/rgc/issues', type=str)
 	parser.add_argument('-P', '--prefix', metavar='STR', \
 		help='Prefix string to image directory for when an environment variable is used - not used by default', \
 		default='', type=str)
+	parser.add_argument('-r', '--requires', metavar='STR', \
+		help='Module prerequisites separated by "," [%(default)s]', default='', type=str)
 	parser.add_argument('--modprefix', metavar='STR', \
-		help='Prefix for all module names bwa -> [modprefix]-bwa', \
+		help='Prefix for all module names bwa/1.12 -> bwa/[prefix]-1.12', \
 		default='', type=str)
 	parser.add_argument('--cachedir', metavar='STR', \
-		help='Directory to cache metadata in [%s(default)s]', \
+		help='Directory to cache metadata in [~/rgc_cache]', \
 		default=os.path.join(os.path.expanduser('~'),'rgc_cache'), type=str)
-	parser.add_argument('-f', '--force', action='store_true', \
-		help='Force overwrite the cache')
-	parser.add_argument('-d', '--delete-old', action='store_true', \
-		help='Delete unused containers and module files')
+	parser.add_argument('-L', '--include-libs', action='store_true', help='Include containers of libraries')
 	parser.add_argument('-p', '--percentile', metavar='INT', \
 		help='Exclude programs in >= p%% of images [%(default)s]', default='25', type=int)
 	parser.add_argument('-S', '--singularity', action='store_true', \
 		help='Images are cached as singularity containers - even when docker is present')
+	parser.add_argument('-f', '--force', action='store_true', \
+		help='Force overwrite the cache')
+	parser.add_argument('-d', '--delete-old', action='store_true', \
+		help='Delete unused containers and module files')
 	parser.add_argument('-t', '--threads', metavar='INT', \
 		help='Number of concurrent threads to use for pulling [%(default)s]', default='8', type=int)
-	parser.add_argument('-L', '--include-libs', action='store_true', help='Include containers of libraries')
 	parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
 	parser.add_argument('urls', metavar='URL', type=str, nargs='+', help='Image urls to pull')
 	args = parser.parse_args()
@@ -171,6 +143,10 @@ class ContainerSystem:
 	mDir (str): Path to output module directory
 	forceImage (bool): Option to force the creation of singularity images
 	prereqs (str): string of prerequisite modules separated by ":"
+	threads (int): Number of threads to use for concurrent operations
+	cache_dir (str): Path to rgc cache
+	force_cache (bool): Whether to force overwrite the cache
+	verbose (bool): Whether to enable verbose logging
 	
 	# Attributes
 	system (str): Container system
@@ -197,9 +173,9 @@ class ContainerSystem:
 	force_cache (str): Force the regeneration of the metadata cache
 	'''
 	def __init__(self, cDir='./containers', mDir='./modulefiles', \
-		forceImage=False, prereqs='', threads=8, verbose=False, \
+		forceImage=False, prereqs='', threads=8, \
 		cache_dir=os.path.join(os.path.expanduser('~'),'rgc_cache'), \
-		force_cache=False):
+		force_cache=False, verbose=False):
 		'''
 		ContainerSystem initializer
 		'''
@@ -283,10 +259,17 @@ class ContainerSystem:
 		'''
 		Adds url to the self.invalid set when a URL is invalid and
 		self.valid when a URL work.
+
+		By default, containers designated as libraries on bio.tools
+		are excluded.
 		
 		# Parameters
 		url (str): Image url used to pull
 		include_libs (bool): Include containers of libraries
+
+		# Attributes
+		self.valid (set): Where valid URLs are stored
+		self.invalid (set): Where invalid URLs are stored
 		'''
 		name, tag = url.split('/')[-1].split(':')
 		if not include_libs:
@@ -340,9 +323,6 @@ class ContainerSystem:
 		# Parameters
 		url_list (list): List of URLs to validate
 		include_libs (bool): Include containers of libraries
-
-		# Returns
-		list: 	list of valid urls
 		'''
 		# Start from cache
 		cache_file = 'valid.pkl'
@@ -412,7 +392,7 @@ class ContainerSystem:
 
 		# Parameters
 		url_list (list): List of urls to pul
-		clean (bool): clean up old images that are no longer used
+		delete_old (bool): Delete old images that are no longer used
 		'''
 		# Load cache
 		cache_file = 'metadata.pkl'
@@ -713,6 +693,7 @@ class ContainerSystem:
 
 		# Parameters
 		url (str): Image url used to pull
+		force (bool): Force a re-scan and print results (for debugging only)
 		'''
 		if url in self.invalid: return
 		if url not in self.images and url in self.valid:
@@ -796,6 +777,11 @@ class ContainerSystem:
 
 		# Parameters
 		p (int): Percentile of images
+		baesline (list): Exclude all programs from this list of urls
+
+		# Attributes
+		permitlist (set): Set of programs that are always included when present
+		blocklist (set): Set of programs to be excluded
 		'''
 		n_images = len(self.progs)
 		n_percentile = p*n_images/100.0
@@ -819,7 +805,7 @@ class ContainerSystem:
 		url (str): Image url used to pull
 		pathPrefix (str): Prefix to prepend to containerDir (think environment variables)
 		contact_url (list): List of contact urls for reporting issues
-		modprefix (str): Container module files can be tagged with modprefix-name for easy stratification from native modules
+		modprefix (str): Container module files can be tagged with modprefix-tag for easy stratification from native modules
 		delete_old (bool): Delete outdated module files
 		'''
 		logger.info("Creating Lmod files for specified all %i images"%(len(self.images)))
@@ -830,8 +816,8 @@ class ContainerSystem:
 			recent_modules = set([])
 			for url in self.images:
 				name, tag = self.name_tag[url]
-				module_name = '%s-%s'%(modprefix, name) if modprefix else name
-				module_file = os.path.join(self.moduleDir, module_name, '%s.lua'%(tag))
+				module_tag = '%s-%s'%(modprefix, tag) if modprefix else tag
+				module_file = os.path.join(self.moduleDir, name, '%s.lua'%(module_tag))
 				recent_modules.add(module_file)
 			# Delete extras
 			self.logger.info("Deleting unused module files")
@@ -841,7 +827,7 @@ class ContainerSystem:
 				if fpath.split('.')[-1] == 'lua':
 					self.logger.info("Deleting old container %s"%(fpath))
 					os.remove(fpath)
-	def genLMOD(self, url, pathPrefix, contact_url, modprefix):
+	def genLMOD(self, url, pathPrefix, contact_url, modprefix=''):
 		'''
 		Generates an Lmod modulefile based on the cached container.
 
@@ -849,13 +835,13 @@ class ContainerSystem:
 		url (str): Image url used to pull
 		pathPrefix (str): Prefix to prepend to containerDir (think environment variables)
 		contact_url (list): List of contact urls for reporting issues
-		modprefix (str): Container module files can be tagged with modprefix-name for easy stratification from native modules
+		modprefix (str): Container module files can be identified with modprefix-tag for easy stratification from native modules
 		'''
 		if url in self.invalid: return
 		if url not in self.progs: self.cacheProgs(url)
 		#####
 		name, tag = self.name_tag[url]
-		module_name = '%s-%s'%(modprefix, name) if modprefix else name
+		module_tag = '%s-%s'%(modprefix, tag) if modprefix else tag
 		full_url = self.full_url[url]
 		desc = self.description[url]
 		keys = self.keywords[url]
@@ -901,8 +887,8 @@ whatis("Description: %s")
 whatis("URL: %s")
 
 '''
-		full_text = help_text%(url, progStr, full_url, module_name, home, contact_joined)
-		full_text += module_text%(module_name, tag, cats, keys, desc, full_url)
+		full_text = help_text%(url, progStr, full_url, name, home, contact_joined)
+		full_text += module_text%(name, module_tag, cats, keys, desc, full_url)
 		# add prereqs
 		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
 		# add functions
@@ -922,9 +908,9 @@ whatis("URL: %s")
 			func_string = 'set_shell_function("%s",\'%s\',\'%s\')\n'%(prog, bash_string, csh_string)
 			full_text += func_string
 		#####
-		mPath = os.path.join(self.moduleDir, module_name)
+		mPath = os.path.join(self.moduleDir, name)
 		if not os.path.exists(mPath): os.makedirs(mPath)
-		outFile = os.path.join(mPath, "%s.lua"%(tag))
+		outFile = os.path.join(mPath, "%s.lua"%(module_tag))
 		#print(full_text.encode('utf8'))
 		with open(outFile,'w') as OF: OF.write(full_text.encode('utf8'))
 
@@ -936,6 +922,7 @@ class ThreadQueue:
 		# Parameters
 		target (function): Target function for threads to run
 		n_threads (int): Number of worker threads to use [10]
+		verbose (bool): Enables verbose logging
 		'''
 		# Init logger
 		FORMAT = '[%(levelname)s - %(threadName)s - %(name)s.%(funcName)s] %(message)s'

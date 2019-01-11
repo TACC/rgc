@@ -192,8 +192,9 @@ class TestRGC(unittest.TestCase):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		with open(self.good_dh_progs,'r') as IF:
 			progs = set([l.rstrip('\n') for l in IF.readlines()])
-			cSystem.cacheProgs(self.good_dh_url)
-			self.assertEqual(cSystem.progs[self.good_dh_url], progs)
+		cSystem.validateURL(self.good_dh_url)
+		cSystem.cacheProgs(self.good_dh_url)
+		self.assertEqual(cSystem.progs[self.good_dh_url], progs)
 	def testFindCommon(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
 		cSystem.pullAll([self.good_dh_url,'biocontainers/biocontainers:latest'], 2)
@@ -205,9 +206,11 @@ class TestRGC(unittest.TestCase):
 		self.assertFalse('cp' in cSystem.getProgs(self.good_dh_url))
 		self.assertTrue('cp' in cSystem.getProgs(self.good_dh_url, blocklist=False))
 	def testGenLMOD(self):
-		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False, threads=2)
 		url = self.good_dh_url
-		cSystem.pullAll([url,'biocontainers/biocontainers:latest'], 2)
+		urls = [url,'biocontainers/biocontainers:latest']
+		cSystem.validateURLs(urls)
+		cSystem.pullAll(urls)
 		cSystem.scanAll()
 		cSystem.findCommon(p=60)
 		cSystem.genLMOD(url, './', 'user@email.com')
