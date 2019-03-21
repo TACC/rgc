@@ -1,0 +1,12 @@
+site_name: rgc Documentation
+repo_url: https://github.com/zyndagj/rgc
+generate:
+- ContainerSystem.md:
+  - rgc.ContainerSystem+
+- ThreadQueue.md:
+  - rgc.ThreadQueue+
+pages:
+- Home: index.md << ../README.md
+- API Documentation:
+  - ContainerSystem: ContainerSystem.md
+  - ThreadQueue: ThreadQueue.md
