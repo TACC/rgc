@@ -50,6 +50,8 @@ except: import urllib.request as urllib2
 try: import cPickle as pickle
 except: import pickle
 
+from .version import version as __version__
+
 # Environment
 FORMAT = "[%(levelname)s - %(funcName)s] %(message)s"
 

@@ -44,8 +44,18 @@ try:
 except:
 	from distutils.core import setup, Extension
 
+# Write the version
+VERSION = "0.1.1"
+
+cnt = """
+# THIS FILE IS GENERATED FROM SETUP.PY
+version = '%s'
+"""
+with open('rgc/version.py','w') as VF:
+	VF.write(cnt%(VERSION))
+
 setup(name = "rgc",
-	version = "0.1.1",
+	version = VERSION,
 	author = "Greg Zynda",
 	author_email="gzynda@tacc.utexas.edu",
 	license="BSD-3",
@@ -54,5 +64,5 @@ setup(name = "rgc",
 	install_requires = ['tqdm'],
 	packages = ["rgc"],
 	entry_points = {'console_scripts': ['rgc=rgc:main']},
+	options = {'build_scripts': {'executable': '/usr/bin/env python'}},
 	test_suite="tests")
-	#package_data={'bioitools/test_data':['test.fa.fai']})
