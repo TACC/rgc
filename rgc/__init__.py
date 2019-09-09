@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/04/2019
+# Last Modified: 09/09/2019
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -43,12 +43,16 @@ from threading import Thread, current_thread
 from shutil import move
 from tqdm import tqdm
 from time import sleep
-try: from Queue import Queue
-except: from queue import Queue
-try: import urllib2
-except: import urllib.request as urllib2
-try: import cPickle as pickle
-except: import pickle
+try:
+	from Queue import Queue
+	import urllib2
+	import cPickle as pickle
+	pyv = 2
+except:
+	from queue import Queue
+	import urllib.request as urllib2
+	import pickle
+	pyv = 3
 
 from .version import version as __version__
 
@@ -278,8 +282,8 @@ class ContainerSystem:
 			# See if it is a bio lib
 			md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
 			try:
-				resp_json = json.loads(urllib2.urlopen(md_url).read())
-				types = [v.encode('ascii','ignore') for v in resp_json['toolType']]
+				resp_json = json.loads(translate(urllib2.urlopen(md_url).read()))
+				types = [v for v in resp_json['toolType']]
 				if types == ['Library']:
 					self.invalid.add(url)
 					self.logger.debug("Excluding %s, which is a library"%(url))
@@ -297,6 +301,7 @@ class ContainerSystem:
 			#	except urllib2.HTTPError:
 			#		pass
 		if tag not in self._getTags(url):
+			self.logger.warning("%s not found in %s"%(tag, self._getTags(url)))
 			self.invalid.add(url)
 			self.logger.warning("%s is an invalid URL"%(url))
 		else:
@@ -365,18 +370,19 @@ class ContainerSystem:
 			query = 'https://hub.docker.com/v2/repositories/%s/tags/'%(name)
 			key = 'results'
 		try:
-			resp = json.load(urllib2.urlopen(query))
+			resp = json.loads(translate(urllib2.urlopen(query).read()))
 			results = resp[key]
 			while 'next' in resp and resp['next']:
-				resp = json.load(urllib2.urlopen(resp['next']))
+				resp = json.loads(translate(urllib2.urlopen(resp['next']).read()))
 				results += resp[key]
-		except urllib2.HTTPError: return set([])
-		all_tags = set([t['name'].encode('ascii','ignore') for t in results])
+		except urllib2.HTTPError:
+			self.logger.debug("No response from %s"%(query))
+			return set([])
+		all_tags = set([t['name'] for t in results])
 		if not all_tags: return set([])
 		max_len = max(map(len, all_tags))
 		tag_str = '%%%is'%(max_len)
 		debug_str = ', '.join(['\n'+tag_str%(tag) if (i) % 3 == 0 else tag_str%(tag) for i, tag in enumerate(all_tags)])
-		self.logger.debug("Detected the following tags for %s:%s"%(url, debug_str))
 		if not remove_latest:
 			return all_tags
 		if 'latest' in all_tags:
@@ -557,7 +563,7 @@ class ContainerSystem:
 				self.logger.debug("Using previously pulled version of %s"%(url))
 			else:
 				if not os.path.exists(simg_dir): os.makedirs(simg_dir)
-				tmp_dir = sp.check_output('mktemp -d -p /tmp', shell=True).rstrip('\n')
+				tmp_dir = translate(sp.check_output('mktemp -d -p /tmp', shell=True)).rstrip('\n')
 				self.logger.debug("Using %s as cachedir"%(tmp_dir))
 				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s &>/dev/null'%(tmp_dir, url)
 				if self._retry_call(cmd, url):
@@ -616,19 +622,19 @@ class ContainerSystem:
 		try:
 			# Check dev.bio.tools
 			md_url = "https://dev.bio.tools/api/tool/%s?format=json"%(name)
-			resp_json = json.loads(urllib2.urlopen(md_url).read())
+			resp_json = json.loads(translate(urllib2.urlopen(md_url).read()))
 			topics = [topic['term'] for topic in resp_json['topic']]
-			topics = [t.encode('ascii','ignore') for t in topics if t != 'N/A']
-			functions = [o['term'].encode('ascii','ignore') for f in resp_json['function'] for o in f['operation']]
-			desc = resp_json['description'].encode('ascii','ignore')
+			topics = [t for t in topics if t != 'N/A']
+			functions = [o['term'] for f in resp_json['function'] for o in f['operation']]
+			desc = resp_json['description']
 			if 'homepage' in resp_json: self.homepage[url] = resp_json['homepage']
 		except urllib2.HTTPError:
 			try:
 				# Check Launchpad
 				md_url = "https://api.launchpad.net/devel/%s"%(name)
-				resp_json = json.loads(urllib2.urlopen(md_url).read())
-				desc = resp_json['description'].encode('ascii','ignore')
-				self.homepage[url] = resp_json['homepage_url'].encode('ascii','ignore')
+				resp_json = json.loads(translate(urllib2.urlopen(md_url).read()))
+				desc = resp_json['description']
+				self.homepage[url] = resp_json['homepage_url']
 				topics = ["Biocontainer"]
 				functions = ["Bioinformatics"]
 			except:
@@ -673,13 +679,13 @@ class ContainerSystem:
 			run = "docker run --rm -it %s %s"%(url, cmd)
 			self.logger.debug("Running\n%s"%(run))
 			out = sp.check_output(run, shell=True)
-			out_split = out.decode('utf-8').split('\r\n')
-			return [l.encode('ascii', 'ignore') for l in out_split]
+			out_split = translate(out).split('\r\n')
+			return [l for l in out_split]
 		elif self.system == 'singularity':
 			run = "singularity exec %s %s"%(self.images[url], cmd)
 			self.logger.debug("Running\n%s"%(run))
 			out = sp.check_output(run, shell=True)
-			return out.encode('ascii', 'ignore').split('\n')
+			return translate(out).split('\n')
 		else:
 			self.logger.error("%s system is unhandled"%(self.system))
 			sys.exit(500)
@@ -724,15 +730,10 @@ class ContainerSystem:
 				logger.error("%s shell is unhandled"%(shell))
 				sys.exit(502)
 			progList = self._check_outputCMD(url, cmd)
-			progList = filter(lambda x: len(x) > 0 and x[0] != '_', progList)
-			if force:
-				print "investigating where there were no programs in %s"%(url)
-				print shell
-				print cmd
-				print progList
-			if not force:
-				self.prog_count += Counter(progList)
-				self.progs[url] = set(progList)
+			progList = list(filter(lambda x: len(x) > 0 and x[0] != '_', progList))
+			self.prog_count += Counter(progList)
+			self.progs[url] = set(progList)
+			logger.debug("%s - %i progs found - %i in set"%(url, len(progList), len(set(progList))))
 	def getProgs(self, url, blocklist=True):
 		'''
 		Retruns a list of all programs on the path of a url that are not blocked
@@ -914,7 +915,15 @@ whatis("URL: %s")
 		if not os.path.exists(mPath): os.makedirs(mPath)
 		outFile = os.path.join(mPath, "%s.lua"%(module_tag))
 		#print(full_text.encode('utf8'))
-		with open(outFile,'w') as OF: OF.write(full_text.encode('utf8'))
+		with open(outFile,'w') as OF: OF.write(full_text)
+
+def translate(s):
+	if pyv == 3:
+		return s.decode('utf-8')
+	elif pyv == 2:
+		return s.encode('ascii','ignore')
+	else:
+		sys.exit("Python version was not detected")
 
 class ThreadQueue:
 	def __init__(self, target, n_threads=10, verbose=False):
