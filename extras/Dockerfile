@@ -1,13 +1,16 @@
 FROM fedora:29
+ARG RGCV
+ARG PYV=3
+ARG SINGV=2.6.0
 
-RUN yum install -y git Lmod singularity-2.6.1 singularity-runtime-2.6.1 \
+RUN yum install -y git Lmod singularity-${SINGV} singularity-runtime-${SINGV} \
 	&& yum clean all
 
-ADD dist/rgc-0.1.0-py3-none-any.whl /root/rgc-0.1.0-py3-none-any.whl
+ADD dist/rgc-${RGCV}-py${PYV}-none-any.whl /root/rgc-${RGCV}-py${PYV}-none-any.whl
 
 RUN useradd -m testRGC \
-	&& pip3 install /root/rgc-0.1.0-py3-none-any.whl \
-	&& rm /root/rgc-0.1.0-py3-none-any.whl
+	&& pip3 install /root/rgc-${RGCV}-py${PYV}-none-any.whl \
+	&& rm /root/rgc-${RGCV}-py${PYV}-none-any.whl
 
 USER testRGC
 WORKDIR /home/testRGC
