@@ -6,7 +6,10 @@ README.md:
 
 gzynda/rgc:
 	python setup.py bdist_wheel
-	docker build --build-arg RGCV=$(RGCV) --build-arg PYV=$(PYV) -t gzynda/rgc:latest -f extras/Dockerfile .
+	docker build --build-arg RGCV=$(RGCV) --build-arg PYV=$(PYV) -t gzynda/rgc:$(RGCV) -f extras/Dockerfile .
+	docker tag $@:$(RGCV) $@:latest
+	docker push $@:$(RGCV)
+	docker push $@:latest
 gzynda/build-essential:
 	docker build --build-arg UBV=bionic -t $@:bionic -f extras/Dockerfile.build-essential .
 	docker push $@:bionic
