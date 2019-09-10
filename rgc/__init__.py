@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/09/2019
+# Last Modified: 09/10/2019
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -90,6 +90,7 @@ def main():
 		help='Delete unused containers and module files')
 	parser.add_argument('-t', '--threads', metavar='INT', \
 		help='Number of concurrent threads to use for pulling [%(default)s]', default='8', type=int)
+	parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
 	parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose logging')
 	parser.add_argument('urls', metavar='URL', type=str, nargs='+', help='Image urls to pull')
 	args = parser.parse_args()
@@ -112,7 +113,7 @@ def main():
 	################################
 	# Define default URLs
 	################################
-	defaultURLS = ['ubuntu:xenial', 'centos:7', 'ubuntu:bionic', 'continuumio/miniconda:latest', 'biocontainers/biocontainers:latest','gzynda/singularity:2.6.0']
+	defaultURLS = ['ubuntu:xenial', 'centos:7', 'ubuntu:bionic', 'continuumio/miniconda:latest', 'biocontainers/biocontainers:latest','gzynda/build-essential:bionic']
 	################################
 	# Validate all URLs
 	################################
