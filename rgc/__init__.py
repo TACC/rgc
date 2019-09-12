@@ -565,10 +565,11 @@ class ContainerSystem:
 			else:
 				if not os.path.exists(simg_dir): os.makedirs(simg_dir)
 				tmp_dir = translate(sp.check_output('mktemp -d -p /tmp', shell=True)).rstrip('\n')
+				tmp_path = os.path.join(tmp_dir, simg)
 				self.logger.debug("Using %s as cachedir"%(tmp_dir))
-				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s &>/dev/null'%(tmp_dir, url)
+                                # Must specify path for singularity3, else it creates an .sif file in current directory
+				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F %s docker://%s &>/dev/null'%(tmp_dir, tmp_path, url)
 				if self._retry_call(cmd, url):
-					tmp_path = os.path.join(tmp_dir, simg)
 					assert(os.path.exists(tmp_path))
 					move(tmp_path, simg_path)
 				else:
