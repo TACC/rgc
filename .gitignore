@@ -2,3 +2,6 @@
 *.pyc
 *egg*
 .DS_Store
+rgc/version.py
+build
+dist
