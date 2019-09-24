@@ -967,7 +967,10 @@ def translate(s):
 	if pyv == 3:
 		return s.decode('utf-8')
 	elif pyv == 2:
-		return s.encode('ascii','ignore')
+		try:
+			return s.encode('ascii','ignore')
+		except:
+			return s.decode('utf8','ignore').encode('ascii','ignore')
 	else:
 		sys.exit("Python version was not detected")
 
