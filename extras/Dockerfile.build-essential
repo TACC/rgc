@@ -1,0 +1,17 @@
+#Image: gzynda/build-essential
+#Version: bionic
+
+ARG UBV=bionic
+FROM ubuntu:${UBV}
+
+# Add clean script
+RUN echo "#!/bin/bash\n\
+apt-get clean\n\
+[ -x \"\$(command -v conda)\" ] && conda clean -tipsy\n\
+for dir in /tmp/* /var/tmp/* /home/jupyter/{.ccache,.cache/pip,conda-bld,.conda} /root/* /root/\.[^\.]* /var/lib/apt/lists/* /var/log/*; do\n\
+	[ -e \$dir ] && rm -rf \$dir || true\n\
+done" > /usr/bin/docker-clean && chmod a+rx /usr/bin/docker-clean && docker-clean
+
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends build-essential git && \
+	docker-clean

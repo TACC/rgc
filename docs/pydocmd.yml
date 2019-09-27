@@ -1,5 +1,5 @@
 site_name: rgc Documentation
-repo_url: https://github.com/zyndagj/rgc
+repo_url: https://github.com/TACC/rgc
 generate:
 - ContainerSystem.md:
   - rgc.ContainerSystem+
@@ -10,3 +10,4 @@ pages:
 - API Documentation:
   - ContainerSystem: ContainerSystem.md
   - ThreadQueue: ThreadQueue.md
+docs_dir: sources

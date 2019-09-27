@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/10/2019
+# Last Modified: 09/17/2019
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -201,7 +201,7 @@ class ContainerSystem:
 		self.logger.debug("Module files will be stored in %s"%(mDir))
 		self.forceImage = forceImage
 		if forceImage: logger.debug("Singularity images will be generated even when using docker")
-		if self.system == 'singularity' or forceImage:
+		if 'singularity' in self.system or forceImage:
 			self.logger.debug("Creating %s for caching images"%(cDir))
 			if not os.path.exists(cDir): os.makedirs(cDir)
 		if not os.path.exists(mDir):
@@ -227,6 +227,7 @@ class ContainerSystem:
 		self.logger.debug("Asynchronous operations will use %i threads"%(threads))
 		self.cache_dir = cache_dir
 		self.force_cache = force_cache
+		self.container_exts = set(('simg','sif'))
 	def _detectSystem(self):
 		'''
 		Looks for
@@ -248,7 +249,18 @@ class ContainerSystem:
 			return 'docker'
 		elif not sp.call('singularity help &>/dev/null', shell=True):
 			self.logger.debug("Detected singularity for container management")
-			return 'singularity'
+			#singularity version 3.3.0-1.fc29
+			#2.6.0-dist
+			sing_version = translate(sp.check_output('singularity --version', shell=True)).rstrip('\n').split()
+			if len(sing_version) > 1:
+				sing_version = sing_version[2]
+			else:
+				sing_version = sing_version[0]
+			split_version = sing_version.split('.')
+			version = split_version[0]
+			self.point_version = split_version[1]
+			self.logger.debug("Detected singularity %c.%c"%(split_version[0], split_version[1]))
+			return 'singularity%c'%(version)
 		else:
 			self.logger.error("Neither docker nor singularity detected on system")
 			sys.exit(101)
@@ -414,7 +426,7 @@ class ContainerSystem:
 		self.logger.info("Pulling %i containers on %i threads"%(len(url_list), self.n_threads))
 		for url in url_list:
 			# Create name directory
-			if self.system == 'singularity' or self.forceImage:
+			if 'singularity' in self.system or self.forceImage:
 				if url not in self.name_tag: self._getNameTag(url)
 				simg_dir = os.path.join(self.containerDir, self.name_tag[url][0])
 				if not os.path.exists(simg_dir): os.makedirs(simg_dir)
@@ -425,11 +437,11 @@ class ContainerSystem:
 		# Delete unused images
 		if delete_old:
 			self.logger.info("Deleting unused containers")
-			if self.system == 'singularity' or self.forceImage:
+			if 'singularity' in self.system or self.forceImage:
 				all_files = set((os.path.join(p, f) for p, ds, fs in os.walk(self.containerDir) for f in fs))
 				to_delete = all_files - set(self.images.values())
 				for fpath in to_delete:
-					if fpath.split('.')[-1] == 'simg':
+					if fpath.split('.')[-1] in self.container_exts:
 						self.logger.info("Deleting old container %s"%(fpath))
 						os.remove(fpath)
 			if self.system == 'docker':
@@ -507,6 +519,9 @@ class ContainerSystem:
 		for i in range(times):
 			try:
 				sp.check_call(cmd, shell=True, stdout=FNULL, stderr=FNULL)
+			except KeyboardInterrupt as e:
+				FNULL.close()
+				sys.exit()
 			except sp.CalledProcessError:
 				if i < times-1:
 					self.logger.debug("Attempting to pull %s again"%(url))
@@ -538,50 +553,69 @@ class ContainerSystem:
 			sys.exit(103)
 		if url not in self.name_tag: self._getNameTag(url)
 		name, tag = self.name_tag[url]
-		simg = '%s-%s.simg'%(name, tag)
-		simg_dir = os.path.join(self.containerDir, name)
-		simg_path = os.path.join(simg_dir, simg)
+		ext_dict = {'docker':'simg', 'singularity2':'simg', 'singularity3':'sif'}
+		img_dir = os.path.join(self.containerDir, name)
+		abs_img_dir = img_dir if img_dir[0] == '/' else os.path.join(os.getcwd(), img_dir)
+		simg = '%s-%s.%s'%(name, tag, ext_dict[self.system])
+		img_out = os.path.join(img_dir, simg)
+		img_set = (os.path.join(img_dir, '%s-%s.%s'%(name, tag, ext)) for ext in ext_dict.values())
+			
 		if self.system == 'docker':
 			if self.forceImage:
-				if os.path.exists(simg_path):
-					self.logger.debug("Using previously pulled version of %s"%(url))
-				else:
-					if not os.path.exists(simg_dir): os.makedirs(simg_dir)
-					absPath = os.path.join(os.getcwd(), simg_dir)
-					cmd = "docker run -v %s:/containers --rm gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s' &>/dev/null"%(absPath, url)
-					if self._retry_call(cmd, url):
-						assert(os.path.exists(simg_path))
-						self.images[url] = simg_path
-					else:
-						self.logger.error("Could not pull %s"%(url))
-						self.invalid.add(url)
-						self.valid.remove(url)
-			else:
-				sp.check_call('docker pull %s &>/dev/null'%(url), shell=True)
-				self.images[url] = url
-		elif self.system == 'singularity':
-			if os.path.exists(simg_path):
-				self.logger.debug("Using previously pulled version of %s"%(url))
-			else:
-				if not os.path.exists(simg_dir): os.makedirs(simg_dir)
-				tmp_dir = translate(sp.check_output('mktemp -d -p /tmp', shell=True)).rstrip('\n')
-				self.logger.debug("Using %s as cachedir"%(tmp_dir))
-				cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s &>/dev/null'%(tmp_dir, url)
+				for p in img_set:
+					if os.path.exists(p):
+						self.logger.debug("Detected %s for url %s - using this version"%(p, url))
+						self.images[url] = p
+						return
+				if not os.path.exists(img_dir): os.makedirs(img_dir)
+				cmd = "docker run -v %s:/containers --rm gzynda/singularity:2.6.0 bash -c 'cd /containers && singularity pull docker://%s' &>/dev/null"%(abs_img_dir, url)
 				if self._retry_call(cmd, url):
+					assert(os.path.exists(img_out))
+					self.images[url] = img_out
+				else:
+					self._pullError(url)
+			else:
+				try:
+					sp.check_call('docker pull %s &>/dev/null'%(url), shell=True)
+					self.images[url] = url
+				except:
+					self._pullError(url)
+		elif 'singularity' in self.system:
+			for p in img_set:
+				if os.path.exists(p):
+					self.logger.debug("Dectect %s for url %s - using this version"%(p, url))
+					self.images[url] = p
+					return
+			if not os.path.exists(img_dir): os.makedirs(img_dir)
+			tmp_dir = translate(sp.check_output('mktemp -d -p /tmp', shell=True)).rstrip('\n')
+			try:
+				if self.system == 'singularity2':
+					cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F docker://%s &>/dev/null'%(tmp_dir, url)
+					self._retry_call(cmd, url)
 					tmp_path = os.path.join(tmp_dir, simg)
 					assert(os.path.exists(tmp_path))
-					move(tmp_path, simg_path)
+					move(tmp_path, img_out)
+				elif self.system == 'singularity3':
+					cmd = 'SINGULARITY_CACHEDIR=%s singularity pull -F %s docker://%s &>/dev/null'%(tmp_dir, img_out, url)
+					self._retry_call(cmd, url)
+					assert(os.path.exists(img_out))
 				else:
-					self.logger.error("Could not pull %s"%(url))
-					self.invalid.add(url)
-					self.valid.remove(url)
+					self.logger.error("Unhandled version of singularity")
+					sys.exit()
+			except:
+				self._pullError(url)
+			if os.path.exists(tmp_dir):
 				sp.check_call('rm -rf %s'%(tmp_dir), shell=True)
 				self.logger.debug("Deleted %s"%(tmp_dir))
-			self.images[url] = simg_path
+			self.images[url] = img_out
 		else:
 			self.logger.error("Unhandled system")
 			sys.exit(102)
 		self.logger.debug("Pulled %s"%(url))
+	def _pullError(self, url):
+		self.logger.error("Could not pull %s"%(url))
+		self.invalid.add(url)
+		self.valid.remove(url)
 	def deleteImage(self, url):
 		'''
 		Deletes a cached image
@@ -595,8 +629,11 @@ class ContainerSystem:
 					os.remove(self.images[url])
 				else:
 					sp.check_call('docker rmi %s &>/dev/null'%(url), shell=True)
-			elif self.system == 'singularity':
+			elif 'singularity' in self.system:
 				os.remove(self.images[url])
+				container_dir = os.path.dirname(self.images[url])
+				if not os.listdir(container_dir):
+					os.rmdir(container_dir)
 			del self.images[url]
 			self.logger.info("Deleted %s"%(url))
 		else:
@@ -668,7 +705,7 @@ class ContainerSystem:
 	def _callCMD(self, url, cmd):
 		if self.system == 'docker':
 			run = "docker run --rm -it %s %s"%(url, cmd)
-		elif self.system == 'singularity':
+		elif 'singularity' in self.system:
 			run = "singularity exec %s %s"%(self.images[url], cmd)
 		else:
 			self.logger.error("%s system is unhandled"%(self.system))
@@ -682,7 +719,7 @@ class ContainerSystem:
 			out = sp.check_output(run, shell=True)
 			out_split = translate(out).split('\r\n')
 			return [l for l in out_split]
-		elif self.system == 'singularity':
+		elif 'singularity' in self.system:
 			run = "singularity exec %s %s"%(self.images[url], cmd)
 			self.logger.debug("Running\n%s"%(run))
 			out = sp.check_output(run, shell=True)
@@ -896,7 +933,7 @@ whatis("URL: %s")
 		# add prereqs
 		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
 		# add functions
-		if self.system == 'singularity':
+		if 'singularity' in self.system:
 			if pathPrefix:
 				prefix = 'singularity exec %s'%(os.path.join(pathPrefix, img_path))
 			else:
@@ -918,11 +955,22 @@ whatis("URL: %s")
 		#print(full_text.encode('utf8'))
 		with open(outFile,'w') as OF: OF.write(full_text)
 
+def _a_path_exists(path_iter):
+	for p in path_iter:
+		if os.path.exists(p):
+			logger.debug("Previously pulled image %s exists"%(p))
+			return True
+	return False
+	#return max(map(os.path.exists, path_iter))
+
 def translate(s):
 	if pyv == 3:
 		return s.decode('utf-8')
 	elif pyv == 2:
-		return s.encode('ascii','ignore')
+		try:
+			return s.encode('ascii','ignore')
+		except:
+			return s.decode('utf8','ignore').encode('ascii','ignore')
 	else:
 		sys.exit("Python version was not detected")
 
