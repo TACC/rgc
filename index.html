@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="None">
+  
+  <link rel="shortcut icon" href="img/favicon.ico">
+  <title>Home - rgc Documentation</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Home";
+    var mkdocs_page_input_path = "index.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="js/jquery-2.1.1.min.js" defer></script>
+  <script src="js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="." class="icon icon-home"> rgc Documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="./search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1 current">
+		
+    <a class="current" href=".">Home</a>
+    <ul class="subnav">
+            
+    <li class="toctree-l2"><a href="#rolling-gantry-crane">Rolling Gantry Crane</a></li>
+    
+        <ul>
+        
+            <li><a class="toctree-l3" href="#workflow">Workflow</a></li>
+        
+            <li><a class="toctree-l3" href="#requirements">Requirements</a></li>
+        
+            <li><a class="toctree-l3" href="#platorms">Platorms</a></li>
+        
+            <li><a class="toctree-l3" href="#usage">Usage</a></li>
+        
+            <li><a class="toctree-l3" href="#examples">Examples</a></li>
+        
+        </ul>
+    
+
+    </ul>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">API Documentation</span>
+    <ul class="subnav">
+                <li class="">
+                    
+    <a class="" href="ContainerSystem/">ContainerSystem</a>
+                </li>
+                <li class="">
+                    
+    <a class="" href="ThreadQueue/">ThreadQueue</a>
+                </li>
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href=".">rgc Documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".">Docs</a> &raquo;</li>
+    
+      
+    
+    <li>Home</li>
+    <li class="wy-breadcrumbs-aside">
+      
+        <a href="https://github.com/TACC/rgc/edit/master/docs/index.md"
+          class="icon icon-github"> Edit on GitHub</a>
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p><img align="center" alt="rgc_logo", width="300", src="docs/images/rgc_logo.svg"></p>
+<h1 id="rolling-gantry-crane">Rolling Gantry Crane</h1>
+<p>Pulls containers from either:</p>
+<ul>
+<li><a href="https://hub.docker.com/">docker hub</a></li>
+<li><a href="https://quay.io/">quay.io</a></li>
+</ul>
+<p>and generates <a href="https://github.com/TACC/Lmod">Lmod</a> modulefiles for use on HPC systems.</p>
+<h2 id="workflow">Workflow</h2>
+<ul>
+<li>Validates each URL<ul>
+<li>Looks for name and tag on specified repsoitory</li>
+<li>Excludes packages that are classified as Libraries on bio.tools</li>
+</ul>
+</li>
+<li>Pulls data for each URL<ul>
+<li>Container</li>
+<li>Metadata from<ul>
+<li>bio.tools</li>
+<li>launchpad</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Scans programs on each container's <code>$PATH</code></li>
+<li>Filters out programs based on the following criteria<ul>
+<li>Programs exist in baseline images<ul>
+<li>ubuntu:xenial</li>
+<li>centos:7</li>
+<li>ubuntu:bionic</li>
+<li>continuumio/miniconda:latest</li>
+<li>biocontainers/biocontainers:latest</li>
+<li>gzynda/build-essential:bionic</li>
+</ul>
+</li>
+<li>Programs that exist in <code>-p</code> percent of images</li>
+</ul>
+</li>
+<li>Generates Lmod files with<ul>
+<li>Metadata</li>
+<li>Exposed executables</li>
+</ul>
+</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>docker or singularity</li>
+<li>python 2 or 3<ul>
+<li>tqdm</li>
+</ul>
+</li>
+</ul>
+<h2 id="platorms">Platorms</h2>
+<ul>
+<li>Linux</li>
+<li>MacOS</li>
+</ul>
+<h2 id="usage">Usage</h2>
+<pre><code>usage: rgc [-h] [-I PATH] [-M PATH] [-C STR] [-P STR] [-r STR]
+           [--modprefix STR] [--cachedir STR] [-L] [-p INT] [-S] [-f] [-d]
+           [-t INT] [--version] [-v]
+           URL [URL ...]
+
+rgc - Pulls containers and generates Lmod modulefiles for use on HPC systems
+
+positional arguments:
+  URL                   Image urls to pull
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -I PATH, --imgdir PATH
+                        Directory used to cache singularity images
+                        [./containers]
+  -M PATH, --moddir PATH
+                        Path to modulefiles [./modulefiles]
+  -C STR, --contact STR
+                        Contact URL(s) in modules separated by &quot;,&quot;
+                        [https://github.com/TACC/rgc/issues]
+  -P STR, --prefix STR  Prefix string to image directory for when an
+                        environment variable is used - not used by default
+  -r STR, --requires STR
+                        Module prerequisites separated by &quot;,&quot; []
+  --modprefix STR       Prefix for all module names bwa/1.12 -&gt;
+                        bwa/[prefix]-1.12
+  --cachedir STR        Directory to cache metadata in [~/rgc_cache]
+  -L, --include-libs    Include containers of libraries
+  -p INT, --percentile INT
+                        Exclude programs in &gt;= p% of images [25]
+  -S, --singularity     Images are cached as singularity containers - even
+                        when docker is present
+  -f, --force           Force overwrite the cache
+  -d, --delete-old      Delete unused containers and module files
+  -t INT, --threads INT
+                        Number of concurrent threads to use for pulling [8]
+  --version             show program's version number and exit
+  -v, --verbose         Enable verbose logging
+</code></pre>
+
+<h2 id="examples">Examples</h2>
+<p>Pulling and generating modules for bwa, samtools, and bowtie</p>
+<pre><code>rgc biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+</code></pre>
+
+<p>and if you don't have a system running Lmod, feel free to test in docker</p>
+<pre><code>$ docker run --privileged --rm -it gzynda/rgc:latest bash
+
+$ rgc biocontainers/bwa:0.7.15 biocontainers/samtools:v1.7.0_cv3 biocontainers/bowtie:v1.1.2_cv3
+$ module use ${PWD}/modulefiles
+$ module avail
+$ module load bwa
+$ bwa
+</code></pre>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="ContainerSystem/" class="btn btn-neutral float-right" title="ContainerSystem">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+          <a href="https://github.com/TACC/rgc/" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
+      
+      
+      
+        <span style="margin-left: 15px"><a href="ContainerSystem/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '.';</script>
+    <script src="js/theme.js" defer></script>
+      <script src="search/main.js" defer></script>
+
+</body>
+</html>
+
+<!--
+MkDocs version : 1.0.4
+Build Date UTC : 2019-09-27 03:31:25
+-->

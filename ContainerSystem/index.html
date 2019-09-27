@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  
+  <link rel="shortcut icon" href="../img/favicon.ico">
+  <title>ContainerSystem - rgc Documentation</title>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "ContainerSystem";
+    var mkdocs_page_input_path = "ContainerSystem.md";
+    var mkdocs_page_url = null;
+  </script>
+  
+  <script src="../js/jquery-2.1.1.min.js" defer></script>
+  <script src="../js/modernizr-2.8.3.min.js" defer></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script> 
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href=".." class="icon icon-home"> rgc Documentation</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+	<ul class="current">
+	  
+          
+            <li class="toctree-l1">
+		
+    <a class="" href="..">Home</a>
+	    </li>
+          
+            <li class="toctree-l1">
+		
+    <span class="caption-text">API Documentation</span>
+    <ul class="subnav">
+                <li class=" current">
+                    
+    <a class="current" href="./">ContainerSystem</a>
+    <ul class="subnav">
+            
+    </ul>
+                </li>
+                <li class="">
+                    
+    <a class="" href="../ThreadQueue/">ThreadQueue</a>
+                </li>
+    </ul>
+	    </li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="..">rgc Documentation</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>API Documentation &raquo;</li>
+        
+      
+    
+    <li>ContainerSystem</li>
+    <li class="wy-breadcrumbs-aside">
+      
+        <a href="https://github.com/TACC/rgc/edit/master/docs/ContainerSystem.md"
+          class="icon icon-github"> Edit on GitHub</a>
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <h1 id="rgc.ContainerSystem">ContainerSystem</h1>
+
+<pre><code class="python">ContainerSystem(self, cDir='./containers', mDir='./modulefiles', forceImage=False, prereqs='', threads=8, cache_dir='/Users/gzynda/rgc_cache', force_cache=False, verbose=False)
+</code></pre>
+
+<p>Class for managing the rgc image cache</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>cDir (str)</strong>: Path to output container directory</li>
+<li><strong>mDir (str)</strong>: Path to output module directory</li>
+<li><strong>forceImage (bool)</strong>: Option to force the creation of singularity images</li>
+<li><strong>prereqs (str)</strong>: string of prerequisite modules separated by ":"</li>
+<li><strong>threads (int)</strong>: Number of threads to use for concurrent operations</li>
+<li><strong>cache_dir (str)</strong>: Path to rgc cache</li>
+<li><strong>force_cache (bool)</strong>: Whether to force overwrite the cache</li>
+<li><strong>verbose (bool)</strong>: Whether to enable verbose logging</li>
+</ul>
+<p><strong>Attributes</strong></p>
+<ul>
+<li><code>system (str)</code>: Container system</li>
+<li><code>containerDir (str)</code>: Path to use for containers</li>
+<li><code>moduleDir (str)</code>: Path to use for module files</li>
+<li><code>forceImage (bool)</code>: Force singularity image creation</li>
+<li><code>invalid (set)</code>: Set of invalid urls</li>
+<li><code>valid (set)</code>: Set of valid urls</li>
+<li><code>images (dict)</code>: Path of singularity image or docker url after pulling</li>
+<li><code>registry (dict)</code>: Registry of origin</li>
+<li><code>progs (dict)</code>: Set of programs in a container</li>
+<li><code>name_tag (dict)</code>: (name, tag) tuple of a URL</li>
+<li><code>keywords (dict)</code>: List of keywords for a container</li>
+<li><code>categories (dict)</code>: List of categories for a container</li>
+<li><code>homepage (dict)</code>: Original homepage of software in container</li>
+<li><code>description (dict)</code>: Description of software in container</li>
+<li><code>full_url (dict)</code>: Full URL to container in registry</li>
+<li><code>blocklist (set)</code>: Set of programs to be blocked from being output</li>
+<li><code>prog_count (Counter)</code>: Occurance count of each program seen</li>
+<li><code>lmod_prereqs (list)</code>: List of prerequisite modules</li>
+<li><code>n_threads (int)</code>: Number of threads to use for concurrent operations</li>
+<li><code>logger (logging)</code>: Class level logger</li>
+<li><code>cache_dir (str)</code>: Location for metadata cache</li>
+<li><code>force_cache (str)</code>: Force the regeneration of the metadata cache</li>
+</ul>
+<h2 id="rgc.ContainerSystem.validateURL">validateURL</h2>
+
+<pre><code class="python">ContainerSystem.validateURL(self, url, include_libs=False)
+</code></pre>
+
+<p>Adds url to the self.invalid set when a URL is invalid and
+self.valid when a URL work.</p>
+<p>By default, containers designated as libraries on bio.tools
+are excluded.</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+<li><strong>include_libs (bool)</strong>: Include containers of libraries</li>
+</ul>
+<p><strong>Attributes</strong></p>
+<ul>
+<li><code>self.valid (set)</code>: Where valid URLs are stored</li>
+<li><code>self.invalid (set)</code>: Where invalid URLs are stored</li>
+</ul>
+<h2 id="rgc.ContainerSystem.validateURLs">validateURLs</h2>
+
+<pre><code class="python">ContainerSystem.validateURLs(self, url_list, include_libs=False)
+</code></pre>
+
+<p>Adds url to the self.invalid set and returns False when a URL is invalid</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url_list (list)</strong>: List of URLs to validate</li>
+<li><strong>include_libs (bool)</strong>: Include containers of libraries</li>
+</ul>
+<h2 id="rgc.ContainerSystem.pullAll">pullAll</h2>
+
+<pre><code class="python">ContainerSystem.pullAll(self, url_list, delete_old=False)
+</code></pre>
+
+<p>Uses worker threads to concurrently pull</p>
+<ul>
+<li>image</li>
+<li>metadata</li>
+<li>repository info</li>
+</ul>
+<p>for a list of urls.</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url_list (list)</strong>: List of urls to pul</li>
+<li><strong>delete_old (bool)</strong>: Delete old images that are no longer used</li>
+</ul>
+<h2 id="rgc.ContainerSystem.pull">pull</h2>
+
+<pre><code class="python">ContainerSystem.pull(self, url)
+</code></pre>
+
+<p>Pulls the following</p>
+<ul>
+<li>image</li>
+<li>metadata</li>
+<li>repository info</li>
+</ul>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+</ul>
+<h2 id="rgc.ContainerSystem.deleteImage">deleteImage</h2>
+
+<pre><code class="python">ContainerSystem.deleteImage(self, url)
+</code></pre>
+
+<p>Deletes a cached image</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+</ul>
+<h2 id="rgc.ContainerSystem.scanAll">scanAll</h2>
+
+<pre><code class="python">ContainerSystem.scanAll(self)
+</code></pre>
+
+<p>Runs <code>self.cachProgs</code> on all containers concurrently with threads</p>
+<h2 id="rgc.ContainerSystem.cacheProgs">cacheProgs</h2>
+
+<pre><code class="python">ContainerSystem.cacheProgs(self, url, force=False)
+</code></pre>
+
+<p>Crawls all directories on a container's PATH and caches a list of all executable files in</p>
+<ul>
+<li><code>self.progs[url]</code></li>
+</ul>
+<p>and counts the global occurance of each program in</p>
+<ul>
+<li><code>self.prog_count[prog]</code></li>
+</ul>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+<li><strong>force (bool)</strong>: Force a re-scan and print results (for debugging only)</li>
+</ul>
+<h2 id="rgc.ContainerSystem.getProgs">getProgs</h2>
+
+<pre><code class="python">ContainerSystem.getProgs(self, url, blocklist=True)
+</code></pre>
+
+<p>Retruns a list of all programs on the path of a url that are not blocked</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+<li><strong>blocklist (bool)</strong>: Filter out blocked programs</li>
+</ul>
+<p><strong>Returns</strong></p>
+<p><code>list</code>: programs on PATH in container</p>
+<h2 id="rgc.ContainerSystem.getAllProgs">getAllProgs</h2>
+
+<pre><code class="python">ContainerSystem.getAllProgs(self, url)
+</code></pre>
+
+<p>Returns a list of all programs on the path of url.</p>
+<p>This is a shortcut for <code>self.getProgs(url, blaclist=False)</code></p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+</ul>
+<h2 id="rgc.ContainerSystem.findCommon">findCommon</h2>
+
+<pre><code class="python">ContainerSystem.findCommon(self, p=25, baseline=[])
+</code></pre>
+
+<p>Creates a blocklist containing all programs that are in at least p% of the images</p>
+<ul>
+<li><code>self.blocklist[url] = set([prog, prog, ...])</code></li>
+</ul>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>p (int)</strong>: Percentile of images</li>
+<li><strong>baesline (list)</strong>: Exclude all programs from this list of urls</li>
+</ul>
+<p><strong>Attributes</strong></p>
+<ul>
+<li><code>permitlist (set)</code>: Set of programs that are always included when present</li>
+<li><code>blocklist (set)</code>: Set of programs to be excluded</li>
+</ul>
+<h2 id="rgc.ContainerSystem.genModFiles">genModFiles</h2>
+
+<pre><code class="python">ContainerSystem.genModFiles(self, pathPrefix, contact_url, modprefix, delete_old)
+</code></pre>
+
+<p>Generates an Lmod modulefile for every valid image</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+<li><strong>pathPrefix (str)</strong>: Prefix to prepend to containerDir (think environment variables)</li>
+<li><strong>contact_url (list)</strong>: List of contact urls for reporting issues</li>
+<li><strong>modprefix (str)</strong>: Container module files can be tagged with modprefix-tag for easy stratification from native modules</li>
+<li><strong>delete_old (bool)</strong>: Delete outdated module files</li>
+</ul>
+<h2 id="rgc.ContainerSystem.genLMOD">genLMOD</h2>
+
+<pre><code class="python">ContainerSystem.genLMOD(self, url, pathPrefix, contact_url, modprefix='')
+</code></pre>
+
+<p>Generates an Lmod modulefile based on the cached container.</p>
+<p><strong>Parameters</strong></p>
+<ul>
+<li><strong>url (str)</strong>: Image url used to pull</li>
+<li><strong>pathPrefix (str)</strong>: Prefix to prepend to containerDir (think environment variables)</li>
+<li><strong>contact_url (list)</strong>: List of contact urls for reporting issues</li>
+<li><strong>modprefix (str)</strong>: Container module files can be identified with modprefix-tag for easy stratification from native modules</li>
+</ul>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../ThreadQueue/" class="btn btn-neutral float-right" title="ThreadQueue">Next <span class="icon icon-circle-arrow-right"></span></a>
+      
+      
+        <a href=".." class="btn btn-neutral" title="Home"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+      
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+          <a href="https://github.com/TACC/rgc/" class="fa fa-github" style="float: left; color: #fcfcfc"> GitHub</a>
+      
+      
+        <span><a href=".." style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+        <span style="margin-left: 15px"><a href="../ThreadQueue/" style="color: #fcfcfc">Next &raquo;</a></span>
+      
+    </span>
+</div>
+    <script>var base_url = '..';</script>
+    <script src="../js/theme.js" defer></script>
+      <script src="../search/main.js" defer></script>
+
+</body>
+</html>
