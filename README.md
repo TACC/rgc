@@ -1,4 +1,4 @@
-<img align="center" alt="rgc_logo", width="300", src="extras/rgc_logo.svg">
+<img align="center" alt="rgc_logo", width="300", src="docs/images/rgc_logo.svg">
 
 Rolling Gantry Crane
 ======================================================
@@ -14,33 +14,33 @@ Workflow
 ------------------------------------------------------
 
 - Validates each URL
-  - Looks for name and tag on specified repsoitory
-  - Excludes packages that are classified as Libraries on bio.tools
+	- Looks for name and tag on specified repsoitory
+	- Excludes packages that are classified as Libraries on bio.tools
 - Pulls data for each URL
-  - Container
-  - Metadata from
-    - bio.tools
-    - launchpad
+	- Container
+	- Metadata from
+		- bio.tools
+		- launchpad
 - Scans programs on each container's `$PATH`
 - Filters out programs based on the following criteria
-  - Programs exist in baseline images
-    - ubuntu:xenial
-    - centos:7
-    - ubuntu:bionic
-    - continuumio/miniconda:latest
-    - biocontainers/biocontainers:latest
-    - gzynda/build-essential:bionic
-  - Programs that exist in `-p` percent of images
+	- Programs exist in baseline images
+		- ubuntu:xenial
+		- centos:7
+		- ubuntu:bionic
+		- continuumio/miniconda:latest
+		- biocontainers/biocontainers:latest
+		- gzynda/build-essential:bionic
+	- Programs that exist in `-p` percent of images
 - Generates Lmod files with
-  - Metadata
-  - Exposed executables
+	- Metadata
+	- Exposed executables
 
 Requirements
 ------------------------------------------------------
 
 - docker or singularity
 - python 2 or 3
-  - tqdm
+	- tqdm
 
 Platorms
 ------------------------------------------------------
