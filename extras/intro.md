@@ -1,4 +1,4 @@
-<img align="center" alt="rgc_logo", width="300", src="extras/rgc_logo.svg">
+<img align="center" alt="rgc_logo", width="300", src="docs/images/rgc_logo.svg">
 
 Rolling Gantry Crane
 ======================================================
