@@ -2,9 +2,10 @@ RGCV := $(shell grep "VERSION =" setup.py | cut -d \" -f 2)
 PYV := $(shell python --version 2>&1 | cut -d ' ' -f 2 | cut -d . -f 1)
 IMG=gzynda/rgc
 
-README.md:
-	bash extras/make_readme.sh
-
+README.md: extras/intro.md extras/examples.md s3 s2
+	cat extras/intro.md > $@
+	docker run gzynda/rgc:latest rgc -h >> $@
+	cat extras/examples.md >> $@
 
 dist/rgc-$(RGCV)-py$(PYV)-none-any.whl: rgc/__init__.py
 	python setup.py bdist_wheel

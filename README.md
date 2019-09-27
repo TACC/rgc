@@ -1,4 +1,6 @@
-rgc - Rolling Gantry Crane
+<img align="center" alt="rgc_logo", width="300", src="extras/rgc_logo.svg">
+
+Rolling Gantry Crane
 ======================================================
 
 Pulls containers from either:
@@ -27,9 +29,11 @@ Workflow
     - ubuntu:bionic
     - continuumio/miniconda:latest
     - biocontainers/biocontainers:latest
-    - gzynda/singularity:2.6.0
+    - gzynda/build-essential:bionic
   - Programs that exist in `-p` percent of images
-- Generates Lmod files
+- Generates Lmod files with
+  - Metadata
+  - Exposed executables
 
 Requirements
 ------------------------------------------------------
@@ -48,9 +52,12 @@ Usage
 ------------------------------------------------------
 
 ```
-usage: rgc [-h] [-I PATH] [-M PATH] [-r STR] [-C STR] [-P STR]
-                   [-p INT] [-S] [-t INT] [-v]
-                   URL [URL ...]
+usage: rgc [-h] [-I PATH] [-M PATH] [-C STR] [-P STR] [-r STR]
+           [--modprefix STR] [--cachedir STR] [-L] [-p INT] [-S] [-f] [-d]
+           [-t INT] [--version] [-v]
+           URL [URL ...]
+
+rgc - Pulls containers and generates Lmod modulefiles for use on HPC systems
 
 positional arguments:
   URL                   Image urls to pull
@@ -62,19 +69,26 @@ optional arguments:
                         [./containers]
   -M PATH, --moddir PATH
                         Path to modulefiles [./modulefiles]
-  -r STR, --requires STR
-                        Module prerequisites separated by "," []
   -C STR, --contact STR
                         Contact URL(s) in modules separated by ","
-                        [https://github.com/zyndagj/rgc/issues]
+                        [https://github.com/TACC/rgc/issues]
   -P STR, --prefix STR  Prefix string to image directory for when an
                         environment variable is used - not used by default
+  -r STR, --requires STR
+                        Module prerequisites separated by "," []
+  --modprefix STR       Prefix for all module names bwa/1.12 ->
+                        bwa/[prefix]-1.12
+  --cachedir STR        Directory to cache metadata in [~/rgc_cache]
+  -L, --include-libs    Include containers of libraries
   -p INT, --percentile INT
                         Exclude programs in >= p% of images [25]
   -S, --singularity     Images are cached as singularity containers - even
                         when docker is present
+  -f, --force           Force overwrite the cache
+  -d, --delete-old      Delete unused containers and module files
   -t INT, --threads INT
                         Number of concurrent threads to use for pulling [8]
+  --version             show program's version number and exit
   -v, --verbose         Enable verbose logging
 ```
 
