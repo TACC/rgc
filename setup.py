@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/26/2019
+# Last Modified: 01/07/2020
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -45,7 +45,7 @@ except:
 	from distutils.core import setup, Extension
 
 # Write the version
-VERSION = "0.1.3"
+VERSION = "0.0.2"
 
 cnt = """
 # THIS FILE IS GENERATED FROM SETUP.PY

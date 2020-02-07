@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/17/2019
+# Last Modified: 01/08/2020
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -149,7 +149,7 @@ class ContainerSystem:
 	cDir (str): Path to output container directory
 	mDir (str): Path to output module directory
 	forceImage (bool): Option to force the creation of singularity images
-	prereqs (str): string of prerequisite modules separated by ":"
+	prereqs (str): string of prerequisite modules separated by ","
 	threads (int): Number of threads to use for concurrent operations
 	cache_dir (str): Path to rgc cache
 	force_cache (bool): Whether to force overwrite the cache
@@ -531,8 +531,8 @@ class ContainerSystem:
 					FNULL.close()
 					return False
 			break
-		return True
 		FNULL.close()
+		return True
 	def _pullImage(self, url):
 		'''
 		Pulls an image using either docker or singularity and
@@ -931,7 +931,9 @@ whatis("URL: %s")
 		full_text = help_text%(url, progStr, full_url, name, home, contact_joined)
 		full_text += module_text%(name, module_tag, cats, keys, desc, full_url)
 		# add prereqs
-		if self.lmod_prereqs[0]: full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
+		if self.lmod_prereqs and self.lmod_prereqs[0]:
+			full_text += 'depends_on("%s")\n'%('","'.join(self.lmod_prereqs))
+			full_text += 'prereq("%s")\n'%('","'.join(self.lmod_prereqs))
 		# add functions
 		if 'singularity' in self.system:
 			if pathPrefix:

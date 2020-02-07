@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 09/04/2019
+# Last Modified: 01/09/2020
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -156,6 +156,8 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(os.path.exists(cSystem.images[url]))
 	def testDeleteImage(self):
 		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False)
+		# TODO make fake image files and then delete them
+		cSystem.images = {url:url for url in self.good
 		cSystem.pullAll(self.good_urls, 4)
 		for url in self.good_urls:
 			cSystem.deleteImage(url)
@@ -218,6 +220,21 @@ class TestRGC(unittest.TestCase):
 		self.assertTrue(os.path.exists(mFile))
 		with open(mFile,'r') as MF:
 			self.assertTrue('samtools' in MF.read())
+	def testPrereqs(self):
+		cSystem = ContainerSystem(cDir=self.cDir, mDir=self.mDir, forceImage=False, prereqs="tacc-singularity", threads=2)
+		url = self.good_dh_url
+		urls = [url,'biocontainers/biocontainers:latest']
+		cSystem.validateURLs(urls)
+		cSystem.pullAll(urls)
+		cSystem.scanAll()
+		cSystem.findCommon(p=60)
+		cSystem.genLMOD(url, './', 'user@email.com')
+		mFile = os.path.join(cSystem.moduleDir, cSystem.name_tag[url][0], cSystem.name_tag[url][1]+'.lua')
+		self.assertTrue(os.path.exists(mFile))
+		with open(mFile,'r') as MF:
+			lines = MF.read()
+			self.assertTrue('depends_on("tacc-singularity")' in lines)
+			self.assertTrue('prereq("tacc-singularity")' in lines)
 
 if __name__ == "__main__":
 	unittest.main()

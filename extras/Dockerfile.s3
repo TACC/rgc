@@ -1,7 +1,7 @@
 FROM fedora:29
 ARG RGCV
 ARG PYV=3
-ARG SINGV=3.4.0
+ARG SINGV=3.4.2
 
 RUN yum install -y git Lmod singularity-${SINGV} findutils \
 	&& yum clean all
