@@ -2,7 +2,7 @@
 #
 ###############################################################################
 # Author: Greg Zynda
-# Last Modified: 01/08/2020
+# Last Modified: 06/22/2020
 ###############################################################################
 # BSD 3-Clause License
 # 
@@ -290,6 +290,9 @@ class ContainerSystem:
 		self.valid (set): Where valid URLs are stored
 		self.invalid (set): Where invalid URLs are stored
 		'''
+		# Sanitize docker prefix if included
+		url = url.replace('docker://','',1)
+		# Split name and tag
 		name, tag = url.split('/')[-1].split(':')
 		if not include_libs:
 			# See if it is a bio lib
@@ -1036,6 +1039,7 @@ class ThreadQueue:
 		except KeyboardInterrupt as e:
 			self.logger.warn("Caught KeyboardInterrupt. Killing threads")
 			for t in self.threads: t.alive = False
+			sp.call('pkill -9f "singularity pull"', shell=True)
 			for t in self.threads: t.join()
 			sys.exit(e)
 	def worker(self, target):
