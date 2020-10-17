@@ -16,6 +16,7 @@ pages:
 - API Documentation:
   - ContainerSystem: ContainerSystem.md
   - ThreadQueue: ThreadQueue.md
+- Tracking Usage: TrackingUsage.md
 - Examples: Examples.md
 
 docs_dir: sources
