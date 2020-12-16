@@ -36,11 +36,44 @@
 ###############################################################################
 
 import logging, os, sys
+from shutil import rmtree
 import subprocess as sp
+from time import sleep
 
 ###### globals ############
 pyv = sys.version_info.major
 logger = logging.getLogger(__name__)
+
+def delete(*paths):
+	'''
+	Helper function for deleting many different files and directories
+
+	# Parameters
+	paths (Iterator): Iterator of path strings to be deleted
+	'''
+	for p in paths:
+		if os.path.exists(p):
+			if os.path.isdir(p):
+				logger.debug("Deleting directory: %s"%(p))
+				rmtree(p)
+			else:
+				logger.debug("Deleting file: %s"%(p))
+				os.remove(p)
+		else:
+			logger.warning("%s does not exist. Cannot remove"%(p))
+
+def remove_empty_sub_directories(dir_path):
+	'''
+	Descends from a provided path and deletes any empty directories.
+
+	# Parameters
+	dir_path (str): Path to descend from
+	'''
+	for path, dl, fl in os.walk(dir_path):
+		if path == dir_path: continue
+		if not fl and not dl:
+			assert dir_path in path
+			delete(path)
 
 def retry_call(cmd, url, times=3, sleep_time=2):
 	'''

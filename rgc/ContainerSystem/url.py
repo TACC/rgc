@@ -41,6 +41,8 @@ class url_parser:
 		'''
 		super(url_parser, self).__init__()
 		self.sanitized_url = {}
+		self.docker_url = {}
+		self.singularity_url = {}
 		self.org = {}
 		self.name = {}
 		self.tag = {}
@@ -54,6 +56,7 @@ class url_parser:
 		url (str): Image URL used to pull image
 		'''
 		self._sanitize(url)
+		self._registryURLs(url)
 		self._split(url)
 		self._detectRegistry(url)
 		self._fullURL(url)
@@ -80,6 +83,19 @@ class url_parser:
 		url (str): Image URL used to pull image
 		'''
 		self.sanitized_url[url] = url.replace('docker://','',1).replace('shub://','',1)
+	def _registryURLs(self,url):
+		'''
+		Caches the registry specific urls used to pull images
+
+		# Attrivutes
+		self.docker_url (dict): Dictionary of {url:"docker url",}
+		self.singularity_url (dict): Dictionary of {url:"singularity url",}
+
+		# Parameters
+		url (str): Image URL used to pull image
+		'''
+		self.singularity_url[url] = "docker://%s"%(self.sanitized_url[url])
+		self.docker_url[url] = self.sanitized_url[url]
 	def _fullURL(self, url):
 		'''
 		Stores the web URL for viewing the specified image in `self.full_url[url]`

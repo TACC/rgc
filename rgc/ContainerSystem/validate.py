@@ -11,11 +11,10 @@ except:
 	pyv = 3
 
 from rgc.ContainerSystem.url import url_parser
-from rgc.ContainerSystem.cache import cache
 from rgc.helpers import translate
 from rgc.ThreadQueue import ThreadQueue
 
-class validate(url_parser, cache):
+class validate(url_parser):
 	'''
 	Class for validating image URLs
 
@@ -116,7 +115,7 @@ class validate(url_parser, cache):
 		set: all tags associated with main image URL
 		'''
 		tag_query = {'dockerhub':('https://hub.docker.com/v2/repositories/%s/%s/tags/','results'),\
-			'quay':('https://quay.io/api/v1/repository/%s/tag/','tags')} #{registry:(url,key),}
+			'quay':('https://quay.io/api/v1/repository/%s/%s/tag/','tags')} #{registry:(url,key),}
 		tag_tuple = self._getUrlTuple(url)
 		if self.registry[url] not in tag_query:
 			logger.error('Unable to query tags for %s'%(url))

@@ -1,0 +1,12 @@
+#FROM docker:latest
+FROM docker:dind
+
+WORKDIR /root
+
+COPY --from=quay.io/singularity/singularity:v3.6.4-slim /usr/local/singularity /usr/local/singularity
+RUN apk add --no-cache ca-certificates libseccomp squashfs-tools
+ENV PATH="/usr/local/singularity/bin:$PATH"
+
+RUN apk update \
+    && apk add --no-cache py3-pip \
+    && pip3 install pytest

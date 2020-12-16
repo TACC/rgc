@@ -5,3 +5,4 @@
 rgc/version.py
 build
 dist
+tests/scache.tar
