@@ -3,21 +3,12 @@ from itertools import product
 import subprocess as sp
 from time import time
 
+from helpers import del_cache_dir, tmp_file
 from rgc.ContainerSystem.pull import pull
 from rgc.helpers import translate, remove_empty_sub_directories
 
 default_dir = os.path.join(os.path.expanduser('~'),'rgc_cache')
 restorable_cache = os.path.join(os.path.dirname(__file__), 'scache.tar')
-
-def del_cache_dir(p):
-	if os.path.exists(p):
-		shutil.rmtree(p)
-def tmp_file(split=False):
-	tmp_file = tempfile.mkstemp()[1]
-	os.remove(tmp_file)
-	if split:
-		return tmp_file, *os.path.split(tmp_file)
-	return tmp_file
 
 def setup_function(function):
 	function.cd = tempfile.mkdtemp()
@@ -126,20 +117,6 @@ def test__pullImage_docker(caplog):
 	assert not os.path.exists(os.path.join(ps.containerDir, 'bwa'))
 	sp.call("docker rmi %s &> /dev/null"%(url), shell=True)
 
-@pytest.mark.docker
-@pytest.mark.slow
-def test__pullImage_docker_force(caplog):
-	ps = test__pullImage_docker_force.ps
-	ps.system = 'docker'
-	ps.forceImage = True
-	url = 'quay.io/biocontainers/bwa:0.7.3a--hed695b0_5'
-	sp.call("docker rmi %s &> /dev/null"%(url), shell=True)
-	ps.parseURL(url)
-	ret = ps._pullImage(url)
-	assert '0.7.3a--hed695b0_5' not in translate(sp.check_output('docker images', shell=True)).rstrip('\n')
-	assert ps.images[url] == os.path.join(ps.containerDir, 'bwa', 'bwa-0.7.3a--hed695b0_5.sif')
-	assert os.path.exists(ps.images[url])
-
 @pytest.mark.singularity
 @pytest.mark.slow
 def test__pullImage_singularity(caplog):
@@ -157,16 +134,14 @@ def test__pullImage_singularity(caplog):
 
 urls = ['quay.io/biocontainers/bwa:0.7.3a--hed695b0_5','quay.io/biocontainers/bears:latest']
 systems = ['docker','singularity3']
-force = [True, False]
 
 @pytest.mark.singularity
 @pytest.mark.docker
 @pytest.mark.slow
-@pytest.mark.parametrize("url,system,force", product(urls, systems, force))
-def test_pull(caplog, url, system, force):
+@pytest.mark.parametrize("url,system", product(urls, systems))
+def test_pull(caplog, url, system):
 	ps = test_pull.ps
 	ps.system = system
-	ps.forceImage = force
 	sp.call("docker rmi -f %s &> /dev/null"%(url), shell=True)
 	ret = ps.pull(url)
 	if 'latest' not in url:
@@ -176,7 +151,7 @@ def test_pull(caplog, url, system, force):
 		assert ps.keywords[url] == ['Mapping']
 		assert ps.description[url] == "Fast, accurate, memory-efficient aligner for short and long sequencing reads"
 		assert ps.homepage[url] == 'http://bio-bwa.sourceforge.net'
-		if ps.system == 'docker' and not ps.forceImage:
+		if ps.system == 'docker':
 			assert '0.7.3a--hed695b0_5' in translate(sp.check_output('docker images | grep "quay.io/biocontainers/bwa"', shell=True))
 			assert ps.images[url] == url
 			assert not os.path.exists(os.path.join(ps.containerDir, 'bwa'))
@@ -208,22 +183,6 @@ def test_pullAll(caplog):
 	assert ps.images[urls[0]] == os.path.join(ps.containerDir, 'bwa', 'bwa-0.7.3a--hed695b0_5.sif')
 	assert os.path.exists(ps.images[urls[0]])
 	assert not os.path.exists(os.path.join(ps.containerDir, 'bears'))
-
-@pytest.mark.docker
-@pytest.mark.slow
-def test__pullDocker_force(caplog):
-	ps = test__pullDocker_force.ps
-	ps.system = 'docker'
-	ps.forceImage = True
-	url = 'quay.io/biocontainers/bwa:0.7.3a--hed695b0_5'
-	sp.call("docker rmi %s &>/dev/null"%(url), shell=True)
-	img_out, img_dir, simg = tmp_file(split=True)
-	ps.parseURL(url)
-	ret = ps._pullDocker(url, img_dir, simg)
-	assert '0.7.3a--hed695b0_5' not in translate(sp.check_output('docker images', shell=True))
-	assert ret == img_out
-	assert os.path.exists(img_out)
-	os.remove(img_out)
 
 def test_sing_cache_exists(caplog):
 	ps = test_sing_cache_exists.ps

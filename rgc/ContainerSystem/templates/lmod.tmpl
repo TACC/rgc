@@ -1,0 +1,44 @@
+local help_message = [[
+This is a module file for the container {url}, which exposes the
+following programs:
+
+{programs_string}
+
+This container was pulled from:
+
+{web_url}
+
+If you encounter errors in {name} or need help running the
+tools it contains, please contact the developer at
+
+{home_url}
+
+For errors in the container or module file, please
+submit a ticket at
+
+{contact}
+]]
+
+help(help_message,"\\n")
+
+whatis("Name: {name}")
+whatis("Version: {version}")
+whatis("Category: {categories}")
+whatis("Keywords: {keywords}")
+whatis("Description: {decription}")
+whatis("URL: {web_url}")
+
+local programs = {{{programs_list}}}
+local run_function = "{run_function}"
+
+-- Define shell functions
+for i,program in pairs(programs) do
+	set_shell_function(program,
+		"RGC_APP=" .. program .. "; " .. run_function .. " $@",
+		"RGC_APP=" .. program .. "; " .. run_function .. " $*")
+end
+
+-- Export functions on load
+execute{{cmd="export -f " .. table.concat(programs, " "), modeA={{"load"}}}}
+-- Unset functions on unload
+execute{{cmd="unset -f " .. table.concat(programs, " "), modeA={{"unload"}}}}

@@ -42,6 +42,10 @@ from time import sleep
 
 ###### globals ############
 pyv = sys.version_info.major
+if pyv == 2:
+	from urllib import unquote
+elif pyv == 3:
+	from urllib.parse import unquote
 logger = logging.getLogger(__name__)
 
 def delete(*paths):
@@ -106,6 +110,9 @@ def retry_call(cmd, url, times=3, sleep_time=2):
 		break
 	FNULL.close()
 	return True
+
+def unescapeURL(html_string):
+	return unquote(html_string)
 
 def _a_path_exists(path_iter):
 	for p in path_iter:

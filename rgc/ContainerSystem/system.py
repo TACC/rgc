@@ -16,8 +16,7 @@ class system:
 		 1. docker
 		 2. singularity
 
-		container systems installed and running on
-		the host.
+		container systems installed and running on the host.
 
 		# Parameters
 		target (str): Target either docker or singularity container system
@@ -38,7 +37,7 @@ class system:
 				return ret_ts
 			else:
 				logger.error("Did not detect target system: %s"%(target))
-				raise ValueError	
+				raise ValueError
 		# Check for docker
 		dd = self._detectDocker()
 		if dd: return dd

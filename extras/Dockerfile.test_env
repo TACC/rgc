@@ -3,10 +3,33 @@ FROM docker:dind
 
 WORKDIR /root
 
+# Install lmod
+RUN apk add --no-cache lua-dev lua-bitop lua-json4 lua-lpeg lua-posix lua-term tcl-dev curl build-base bash
+RUN curl -SL https://github.com/TACC/Lmod/archive/8.4.19.tar.gz | tar -xzf - \
+	&& cd Lmod-8.4.19 \
+	&& ./configure --prefix=/opt/apps \
+	&& make install \
+	&& cd .. && rm -rf Lmod-8.4.19
+RUN ln -s /opt/apps/lmod/lmod/init/profile /etc/profile.d/z00_lmod.sh \
+	&& ln -s /opt/apps/lmod/lmod/init/cshrc /etc/profile.d/z00_lmod.csh 
+
+# Add singularity
 COPY --from=quay.io/singularity/singularity:v3.6.4-slim /usr/local/singularity /usr/local/singularity
 RUN apk add --no-cache ca-certificates libseccomp squashfs-tools
 ENV PATH="/usr/local/singularity/bin:$PATH"
 
+# Set timezone
+RUN apk add --no-cache curl tzdata \
+	&& TZ=$( curl https://ipapi.co/timezone ) \
+	&& cp /usr/share/zoneinfo/$TZ /etc/localtime \
+	&& echo $TZ > /etc/timezone \
+	&& apk del tzdata
+
+# Install python3 and pip3
 RUN apk update \
     && apk add --no-cache py3-pip \
     && pip3 install pytest
+
+# Make tracker urls work
+ENV TACC_SYSTEM="rgc_test_env"
+ENV SLURM_JOB_ID="test_job"

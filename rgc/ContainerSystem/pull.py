@@ -22,7 +22,7 @@ class pull(validate, system, cache, metadata):
 	ext_dict = {'docker':'sif', 'singularity2':'simg', 'singularity3':'sif'}
 	singularity_docker_image = "quay.io/singularity/singularity:v3.6.4-slim"
 	cache_docker_images = ['biocontainers/biocontainers:v1.2.0_cv1', 'biocontainers/biocontainers:vdebian-buster-backports_cv1', 'biocontainers/biocontainers:v1.1.0_cv2','biocontainers/biocontainers:v1.0.0_cv4']
-	def __init__(self, cDir='./containers', cache_dir=False, target='', forceImage=False):
+	def __init__(self, cDir='./containers', cache_dir=False, target=''):
 		super(pull, self).__init__()
 		self.containerDir = cDir
 		self.system = self._detectSystem()
@@ -33,13 +33,12 @@ class pull(validate, system, cache, metadata):
 		self.force_cache = False
 		self.reached_pull_limit = False
 		self.n_threads = 4
-		self.forceImage = forceImage
 		self.images = {}
 		# Support a custom cache directory
 		if cache_dir:
 			self.cache_dir = cache_dir
 			if not os.path.exists(cache_dir): os.makedirs(cache_dir)
-	def pullAll(self, url_list, delete_old=False):
+	def pullAll(self, url_list, delete_old=False, use_cache=True):
 		'''
 		Uses worker threads to concurrently pull
 
@@ -56,14 +55,14 @@ class pull(validate, system, cache, metadata):
 		# Load cache
 		cache_file = 'metadata.pkl'
 		self.categories, self.keywords, self.description, self.homepage = self._cache_load(cache_file, [dict() for i in range(4)])
-		if 'singularity' in self.system or self.forceImage:
+		if 'singularity' in self.system:
 			# Create tool name directory
 			for url in url_list:
 				if url not in self.full_url: self.parseURL(url)
 				simg_dir = os.path.join(self.containerDir, self.name[url])
 				if not os.path.exists(simg_dir): os.makedirs(simg_dir)
 			# Make singularity layer cache
-			self._makeSingularityCache()
+			if use_cache: self._makeSingularityCache()
 			# Process using ThreadQueue
 			logger.info("Pulling %i containers on %i threads"%(len(url_list), self.n_threads))
 			tq = ThreadQueue(target=self.pull, n_threads=self.n_threads)
@@ -78,7 +77,7 @@ class pull(validate, system, cache, metadata):
 		# Delete unused images
 		if delete_old:
 			logger.info("Deleting unused containers")
-			if 'singularity' in self.system or self.forceImage:
+			if 'singularity' in self.system:
 				all_files = set((os.path.join(p, f) for p, ds, fs in os.walk(self.containerDir) for f in fs))
 				to_delete = all_files - set(self.images.values())
 				for fpath in to_delete:
@@ -131,6 +130,9 @@ class pull(validate, system, cache, metadata):
 
 		# Attributes
 		self.containerDir (str): Directory for container
+
+		# Returns
+		bool: whether or not the pull was successful
 		'''
 		# Make sure image url is valid
 		if url in self.invalid:
@@ -144,7 +146,7 @@ class pull(validate, system, cache, metadata):
 		img_out = os.path.join(img_dir, simg)
 		img_set = (os.path.join(img_dir, '%s-%s.%s'%(self.name[url], self.tag[url], ext)) for ext in self.ext_dict.values())
 		# If working with file based containers
-		if 'singularity' in self.system or self.forceImage:
+		if 'singularity' in self.system:
 			# Check for image
 			self.images[url] = self._checkForImage(url, img_set)
 			if self.images[url]: return
@@ -172,7 +174,6 @@ class pull(validate, system, cache, metadata):
 
 		# Attributes
 		self.singularity_url (str): URL for pulling with singularity
-		self.forceImage (bool): Force creates a singularity image file
 
 		# Returns
 		val: False if image could not be pulled or image destination if successful
@@ -184,16 +185,9 @@ class pull(validate, system, cache, metadata):
 		tmp_log = mkstemp()[1]
 		img_out = os.path.join(img_dir, simg)
 		try:
-			if self.forceImage:
-				cmd = "docker run -v %s:/containers --rm %s pull -F /containers/%s %s &> %s"%(img_dir, self.singularity_docker_image, simg, self.singularity_url[url], tmp_log)
-				if retry_call(cmd, url): logger.debug("Finished pulling %s"%(url))
-				assert os.path.exists(img_out)
-				delete(tmp_log)
-				return img_out
-			else:
-				sp.check_call('docker pull %s &> %s'%(self.docker_url[url], tmp_log), shell=True)
-				delete(tmp_log)
-				return url
+			sp.check_call('docker pull %s &> %s'%(self.docker_url[url], tmp_log), shell=True)
+			delete(tmp_log)
+			return url
 		except:
 			self._pullError(url, tmp_log)
 			delete(tmp_log)
@@ -360,3 +354,22 @@ class pull(validate, system, cache, metadata):
 				logger.debug("Detected %s for url %s - using this version"%(img_path, url))
 				return img_path
 		return False
+	def deleteImage(self, url):
+		'''
+		Deletes a cached image
+
+		# Parameters
+		url (str): Image url used to pull
+		'''
+		if url in self.images:
+			if self.system == 'docker':
+				sp.check_call('docker rmi %s &>/dev/null'%(url), shell=True)
+			elif 'singularity' in self.system:
+				os.remove(self.images[url])
+				container_dir = os.path.dirname(self.images[url])
+				if not os.listdir(container_dir):
+					os.rmdir(container_dir)
+			del self.images[url]
+			self.logger.info("Deleted %s"%(url))
+		else:
+			self.logger.info("%s didn't exist"%(url))
