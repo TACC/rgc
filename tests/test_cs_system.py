@@ -2,7 +2,7 @@ import pytest, logging
 from helpers import mock
 from itertools import product
 
-import rgc.ContainerSystem.system as rsys
+from rgc.ContainerSystem import system as rsys
 
 singularity_responses = (b"2.6.0-dist",b"singularity version 3.3.0-1.fc29",b"singularity version 4.1")
 singularity_versions = ('singularity2','singularity3','singularity4')
