@@ -6,13 +6,11 @@ TESTC=rgc_test_container
 TEST=rgc_test_env
 
 test_env: extras/Dockerfile.test_env
-	docker build -t $(TESTC) -f $< ./extras && docker system prune -f
+	docker rm -f $(TEST); docker build -t $(TESTC) -f $< ./extras && docker system prune -f
 	docker run --privileged --rm -d --name $(TEST) -v $(PWD):/root/rgc $(TESTC)
 	#docker run --rm -it -d --name $(TEST) -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD):/root/rgc -v /tmp:/tmp $(TESTC) /bin/sh
 	docker exec -it $(TEST) pip3 install -e /root/rgc
-	docker exec -it $(TEST) bash --login
-	docker kill $(TEST)
-	docker rm $(TEST)
+	docker exec -it $(TEST) bash --login; docker rm -f $(TEST)
 
 README.md: extras/intro.md extras/examples.md s3 s2
 	cat extras/intro.md > $@

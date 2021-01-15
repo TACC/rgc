@@ -15,8 +15,9 @@ RUN ln -s /opt/apps/lmod/lmod/init/profile /etc/profile.d/z00_lmod.sh \
 
 # Add singularity
 COPY --from=quay.io/singularity/singularity:v3.6.4-slim /usr/local/singularity /usr/local/singularity
-RUN apk add --no-cache ca-certificates libseccomp squashfs-tools
-ENV PATH="/usr/local/singularity/bin:$PATH"
+RUN apk add --no-cache ca-certificates libseccomp squashfs-tools \
+	&& echo -e "#!/bin/bash\nexport PATH=/usr/local/singularity/bin:${PATH}" > /etc/profile.d/z00_singularity.sh \
+	&& chmod a+r /etc/profile.d/z00_singularity.sh
 
 # Set timezone
 RUN apk add --no-cache curl tzdata \
