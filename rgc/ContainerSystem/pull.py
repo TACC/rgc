@@ -404,6 +404,6 @@ class pull(validate, system, metadata):
 				if not os.listdir(container_dir):
 					os.rmdir(container_dir)
 			del self.images[url]
-			self.logger.info("Deleted %s"%(url))
+			logger.info("Deleted %s"%(url))
 		else:
-			self.logger.info("%s didn't exist"%(url))
+			logger.info("%s didn't exist"%(url))
