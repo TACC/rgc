@@ -1,13 +1,22 @@
 site_name: rgc Documentation
-repo_url: https://github.com/TACC/rgc
+site_author: Greg Zynda
+copyright: Texas Advanced Computing Center - UT Austin
+repo_url: https://github.com/TACC/rgc/
+
 generate:
 - ContainerSystem.md:
   - rgc.ContainerSystem+
 - ThreadQueue.md:
   - rgc.ThreadQueue+
+
 pages:
 - Home: index.md << ../README.md
+- About:
+  - License: LICENSE.md << ../LICENSE
 - API Documentation:
   - ContainerSystem: ContainerSystem.md
   - ThreadQueue: ThreadQueue.md
+- Tracking Usage: TrackingUsage.md
+- Examples: Examples.md
+
 docs_dir: sources
