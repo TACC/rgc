@@ -67,7 +67,7 @@ class scan(pull):
 	# Programs always permitted
 	permit_set = {'samtools','bwa','bowtie','bowtie2','java'}
 	# Detected programs must be a combination of [a-zA-Z0-9_]
-	prx = re.compile(r"\w+")
+	prx = re.compile(r"[\w-]+")
 	def __init__(self):
 		super(scan, self).__init__()
 		self.programs = {}

@@ -1,9 +1,11 @@
 RGCV := $(shell grep "VERSION =" setup.py | cut -d \" -f 2)
-PYV := $(shell python --version 2>&1 | cut -d ' ' -f 2 | cut -d . -f 1)
+PYV := $(shell python3 -V 2>&1 | cut -d ' ' -f 2 | cut -d . -f 1)
 
 IMG=gzynda/rgc
 TESTC=rgc_test_container
 TEST=rgc_test_env
+
+SHELL=/bin/bash
 
 test_env: extras/Dockerfile.test_env
 	docker rm -f $(TEST); docker build -t $(TESTC) -f $< ./extras && docker system prune -f
@@ -18,7 +20,7 @@ README.md: extras/intro.md extras/examples.md s3 s2
 	cat extras/examples.md >> $@
 
 dist/rgc-$(RGCV)-py$(PYV)-none-any.whl: rgc/__init__.py
-	python setup.py bdist_wheel
+	python3 setup.py bdist_wheel
 dist/current_source.tar.gz: setup.py tests/__init__.py rgc/__init__.py
 	tar -czf $@ rgc setup.py tests
 s3: dist/rgc-$(RGCV)-py$(PYV)-none-any.whl

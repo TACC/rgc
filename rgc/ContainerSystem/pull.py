@@ -55,7 +55,7 @@ class pull(validate, system, metadata):
 	'''
 	ext_dict = {'docker':'sif', 'singularity2':'simg', 'singularity3':'sif'}
 	singularity_docker_image = "quay.io/singularity/singularity:v3.6.4-slim"
-	cache_docker_images = ['biocontainers/biocontainers:v1.2.0_cv1', 'biocontainers/biocontainers:vdebian-buster-backports_cv1', 'biocontainers/biocontainers:v1.1.0_cv2','biocontainers/biocontainers:v1.0.0_cv4']
+	cache_docker_images = ['centos:7', 'biocontainers/biocontainers:v1.2.0_cv1', 'biocontainers/biocontainers:vdebian-buster-backports_cv1', 'biocontainers/biocontainers:v1.1.0_cv2','biocontainers/biocontainers:v1.0.0_cv4']
 	def __init__(self, cDir='./containers', cache_dir=False, target=''):
 		super(pull, self).__init__()
 		self.containerDir = cDir
