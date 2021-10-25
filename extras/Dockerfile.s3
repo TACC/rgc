@@ -1,9 +1,9 @@
-FROM fedora:29
+FROM fedora:34
 ARG RGCV
 ARG PYV=3
-ARG SINGV=3.4.2
+ARG SINGV=3.8.3
 
-RUN yum install -y git Lmod singularity-${SINGV} findutils \
+RUN yum install -y git Lmod singularity-${SINGV} findutils python3-pip \
 	&& yum clean all
 
 ADD dist/rgc-${RGCV}-py${PYV}-none-any.whl /root/rgc-${RGCV}-py${PYV}-none-any.whl

@@ -129,7 +129,7 @@ def main():
 	################################
 	cSystem.genModFiles(pathPrefix=args.prefix, contact_url=args.contact, \
 		mod_prefix=args.modprefix, delete_old=args.delete_old, \
-		tracker_url=args.tracker, force=False, lmod_prereqs=requires.split(','))
+		tracker_url=args.tracker, force=False, lmod_prereqs=args.requires.split(','))
 	logger.debug("DONE creating Lmod files for all %i containers"%(len(args.urls)))
 
 if __name__ == "__main__":
